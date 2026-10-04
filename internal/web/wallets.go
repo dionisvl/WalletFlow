@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"walletflow/internal/address"
 	"walletflow/internal/ledger"
@@ -28,7 +29,9 @@ func (s *Server) renderWallets(w http.ResponseWriter, r *http.Request, d wallets
 	s.render(w, r, "wallets", "Кошельки", d)
 }
 
-// walletsAdd takes lines like "address[, name[, kind]]".
+// walletsAdd takes one address from the form fields, or lines like
+// "address[, name[, kind]]" where name and kind default to the form fields.
+// With then=graph it starts a sync and opens the graph of the new wallets.
 func (s *Server) walletsAdd(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	defKind := ledger.Kind(r.FormValue("kind"))
@@ -36,13 +39,18 @@ func (s *Server) walletsAdd(w http.ResponseWriter, r *http.Request) {
 		defKind = ledger.KindMine
 	}
 	defName := strings.TrimSpace(r.FormValue("name"))
+	lines := r.FormValue("lines")
+	if a := strings.TrimSpace(r.FormValue("address")); a != "" {
+		lines = a // name and kind come from the form fields
+	}
 	var d walletsData
-	for line := range strings.Lines(r.FormValue("lines")) {
+	synced := false
+	for line := range strings.Lines(lines) {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		parts := strings.FieldsFunc(line, func(c rune) bool { return c == ',' || c == ';' || c == '\t' })
+		parts := splitLine(line)
 		fam, addr, err := address.Normalize(parts[0])
 		if err != nil {
 			d.Errors = append(d.Errors, fmt.Sprintf("%s: %v", line, err))
@@ -62,6 +70,7 @@ func (s *Server) walletsAdd(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		d.Added++
+		synced = synced || a.Kind.Synced()
 	}
 	if d.Added > 0 {
 		if err := s.store.RefreshBook(ctx); err != nil {
@@ -69,7 +78,30 @@ func (s *Server) walletsAdd(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if r.FormValue("then") == "graph" && len(d.Errors) == 0 {
+		if synced {
+			s.sync.Start(s.ctx)
+		}
+		http.Redirect(w, r, "/graph?common=1", http.StatusSeeOther)
+		return
+	}
 	s.renderWallets(w, r, d)
+}
+
+// walletsExport downloads the address book in the format the import accepts.
+func (s *Server) walletsExport(w http.ResponseWriter, r *http.Request) {
+	addrs, err := s.store.Addresses(r.Context())
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="walletflow-wallets-`+time.Now().Format("2006-01-02")+`.txt"`)
+	fmt.Fprintln(w, "# адрес, имя, тип (мой / биржа / чужой / наблюдаемый)")
+	for _, a := range addrs {
+		name := strings.NewReplacer(",", " ", ";", " ", "\t", " ").Replace(a.Name)
+		fmt.Fprintf(w, "%s, %s, %s\n", a.Address, name, strings.ToLower(a.Kind.Label()))
+	}
 }
 
 func (s *Server) walletUpdate(w http.ResponseWriter, r *http.Request) {
@@ -129,4 +161,13 @@ func (s *Server) markCounterparty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.refreshInbox(w, r)
+}
+
+// splitLine splits "a, b, c" on commas, semicolons or tabs, keeping empty fields.
+func splitLine(line string) []string {
+	parts := strings.Split(strings.NewReplacer(";", ",", "\t", ",").Replace(line), ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
 }

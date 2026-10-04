@@ -29,6 +29,16 @@ type Status struct {
 	Added    int
 	Errors   []string
 	Finished time.Time
+	Active   []string // what each worker is doing now
+
+	active map[string]string
+}
+
+func (st *Status) setActive(key, msg string) {
+	if st.active == nil {
+		st.active = map[string]string{}
+	}
+	st.active[key] = msg
 }
 
 // Keys returns the API keys to use for a run.
@@ -45,9 +55,12 @@ type Syncer struct {
 	enabled Enabled
 	http    *http.Client
 
-	mu     sync.Mutex
-	status Status
-	cancel context.CancelFunc
+	mu      sync.Mutex
+	status  Status
+	cancel  context.CancelFunc
+	blocked map[string]bool // chains the API plan does not allow, per run
+
+	etherscanURL, tronURL string // empty = real APIs; tests point them at fakes
 }
 
 // New creates a syncer over the available chains.
@@ -61,6 +74,11 @@ func (s *Syncer) Status() Status {
 	defer s.mu.Unlock()
 	st := s.status
 	st.Errors = slices.Clone(s.status.Errors)
+	st.active = nil
+	for _, m := range s.status.active {
+		st.Active = append(st.Active, m)
+	}
+	slices.Sort(st.Active)
 	return st
 }
 
@@ -78,6 +96,7 @@ func (s *Syncer) Start(ctx context.Context) bool {
 		return false
 	}
 	s.status = Status{Running: true, Message: "Старт…"}
+	s.blocked = map[string]bool{}
 	ctx, s.cancel = context.WithCancel(ctx)
 	go func() {
 		defer func() {
@@ -116,7 +135,7 @@ func (s *Syncer) Stop() {
 	}
 }
 
-// errRemoved stops a job whose address was removed or is no longer "mine".
+// errRemoved stops a job whose address was removed or is no longer synced.
 var errRemoved = errors.New("address removed from own wallets")
 
 // bigHistory is the transfer count after which an "own" address looks like an exchange.
@@ -125,6 +144,7 @@ const bigHistory = 5000
 type job struct {
 	chain chain.Chain
 	addr  string
+	kind  ledger.Kind
 }
 
 func (s *Syncer) run(ctx context.Context) {
@@ -136,20 +156,20 @@ func (s *Syncer) run(ctx context.Context) {
 	enabled := s.enabled(ctx)
 	var jobs []job
 	for _, a := range addrs {
-		if a.Kind != ledger.KindMine {
+		if !a.Kind.Synced() {
 			continue
 		}
 		for _, c := range s.chains {
 			if c.Family == a.Family && enabled[c.Key] {
-				jobs = append(jobs, job{c, a.Address})
+				jobs = append(jobs, job{c, a.Address, a.Kind})
 			}
 		}
 	}
 	s.update(func(st *Status) { st.Total = len(jobs) })
 
 	ethKey, tronKey := s.keys(ctx)
-	ec := &evm.Client{Key: ethKey, HTTP: s.http, Limit: chain.NewLimiter(400 * time.Millisecond)}
-	tc := &tron.Client{Key: tronKey, HTTP: s.http, Limit: chain.NewLimiter(250 * time.Millisecond)}
+	ec := &evm.Client{Key: ethKey, BaseURL: s.etherscanURL, HTTP: s.http, Limit: chain.NewLimiter(400 * time.Millisecond)}
+	tc := &tron.Client{Key: tronKey, BaseURL: s.tronURL, HTTP: s.http, Limit: chain.NewLimiter(250 * time.Millisecond)}
 	if tronKey == "" {
 		tc.Limit = chain.NewLimiter(time.Second) // public limits are tight
 	}
@@ -157,50 +177,98 @@ func (s *Syncer) run(ctx context.Context) {
 		s.fail(errors.New("нет ключа Etherscan (ETHERSCAN_API_KEY в .env или Настройки), EVM сети пропущены"))
 	}
 
-	blocked := map[string]bool{} // chains the API plan does not allow
-	for i, j := range jobs {
-		if ctx.Err() != nil {
-			return
-		}
-		s.update(func(st *Status) { st.Step = i + 1 })
-		if j.chain.Family == address.EVM && (ethKey == "" || blocked[j.chain.Key]) {
-			continue
-		}
-		progress := func(msg string) { s.update(func(st *Status) { st.Message = msg }) }
-		// Check before each page, so deleting an address mid-sync stops its download.
-		emit := func(ctx context.Context, ts []ledger.Transfer) (int, error) {
-			if mine, err := s.store.IsMine(ctx, j.addr); err != nil || !mine {
-				return 0, cmp.Or(err, errRemoved)
+	// A few addresses at a time, so a huge history does not hold up small ones.
+	// The per-provider limiters keep the request rate within API limits.
+	queue := make(chan job)
+	var wg sync.WaitGroup
+	for range min(workers, len(jobs)) {
+		wg.Go(func() {
+			for j := range queue {
+				s.runJob(ctx, j, ec, tc)
 			}
-			return s.store.InsertTransfers(ctx, ts)
-		}
-		var n int
-		var err error
-		switch j.chain.Family {
-		case address.EVM:
-			n, err = ec.Pull(ctx, j.chain, j.addr, s.store, emit, progress)
-			if errors.Is(err, evm.ErrNoChainAccess) {
-				blocked[j.chain.Key] = true
-				err = fmt.Errorf("недоступна на бесплатном тарифе Etherscan. Добавь %q в IGNORE_CHAINS в .env или сними галочку в Настройках", j.chain.Key)
-			}
-		case address.Tron:
-			n, err = tc.Pull(ctx, j.addr, s.store, emit, progress)
-		}
-		s.update(func(st *Status) { st.Added += n })
-		if errors.Is(err, errRemoved) {
-			continue
-		}
-		if n > bigHistory {
-			s.fail(fmt.Errorf("%s %s: загружено %d трансферов. Если это адрес биржи, смени тип на «Биржа»: лишние трансферы удалятся", j.chain.Name, address.Short(j.addr), n))
-		}
-		if err != nil && ctx.Err() == nil {
-			if blocked[j.chain.Key] {
-				s.fail(fmt.Errorf("%s: %w", j.chain.Name, err))
-			} else {
-				s.fail(fmt.Errorf("%s %s: %w", j.chain.Name, address.Short(j.addr), err))
-			}
+		})
+	}
+	for _, j := range jobs {
+		select {
+		case queue <- j:
+		case <-ctx.Done():
 		}
 	}
+	close(queue)
+	wg.Wait()
+}
+
+// workers is how many addresses sync at once.
+const workers = 4
+
+func (s *Syncer) runJob(ctx context.Context, j job, ec *evm.Client, tc *tron.Client) {
+	if ctx.Err() != nil {
+		return
+	}
+	key := j.chain.Name + " " + address.Short(j.addr)
+	defer func() {
+		if r := recover(); r != nil {
+			s.fail(fmt.Errorf("%s: panic: %v", key, r))
+		}
+		s.update(func(st *Status) {
+			st.Step++
+			delete(st.active, key)
+		})
+	}()
+	if j.chain.Family == address.EVM && (ec.Key == "" || s.isBlocked(j.chain.Key)) {
+		return
+	}
+	progress := func(msg string) { s.update(func(st *Status) { st.setActive(key, msg) }) }
+	progress(key + ": старт")
+	// Check before each page, so deleting an address mid-sync stops its download.
+	emit := func(ctx context.Context, ts []ledger.Transfer) (int, error) {
+		if ok, err := s.store.IsSynced(ctx, j.addr); err != nil || !ok {
+			return 0, cmp.Or(err, errRemoved)
+		}
+		n, err := s.store.InsertTransfers(ctx, ts)
+		s.update(func(st *Status) { st.Added += n })
+		return n, err
+	}
+	var n int
+	var err error
+	switch j.chain.Family {
+	case address.EVM:
+		n, err = ec.Pull(ctx, j.chain, j.addr, s.store, emit, progress)
+		if errors.Is(err, evm.ErrNoChainAccess) {
+			if s.block(j.chain.Key) {
+				s.fail(fmt.Errorf("%s: недоступна на бесплатном тарифе Etherscan. Добавь %q в IGNORE_CHAINS в .env или сними галочку в Настройках", j.chain.Name, j.chain.Key))
+			}
+			return
+		}
+	case address.Tron:
+		n, err = tc.Pull(ctx, j.addr, s.store, emit, progress)
+	}
+	if errors.Is(err, errRemoved) {
+		return
+	}
+	if n > bigHistory && j.kind == ledger.KindMine {
+		s.fail(fmt.Errorf("%s: загружено %d трансферов. Если это адрес биржи, смени тип на «Биржа»: лишние трансферы удалятся", key, n))
+	}
+	if err != nil && ctx.Err() == nil {
+		s.fail(fmt.Errorf("%s: %w", key, err))
+	}
+}
+
+// block marks a chain unavailable on the API plan; it reports whether it was newly blocked.
+func (s *Syncer) block(chain string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.blocked[chain] {
+		return false
+	}
+	s.blocked[chain] = true
+	return true
+}
+
+func (s *Syncer) isBlocked(chain string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.blocked[chain]
 }
 
 func (s *Syncer) fail(err error) {

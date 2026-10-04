@@ -72,6 +72,7 @@ type Filter struct {
 	Inbox         bool
 	HideSpam      bool
 	HideZero      bool
+	OnlyLedger    bool // skip "unknown": transfers of watched wallets with strangers
 	Limit, Offset int
 }
 
@@ -136,6 +137,9 @@ func (f Filter) where() (string, []any) {
 	}
 	if f.HideZero {
 		add("t.amount_raw != '0'")
+	}
+	if f.OnlyLedger {
+		add("t.class != 'unknown'")
 	}
 	if f.HideSpam || f.Inbox {
 		add("a.is_spam = 0")
@@ -284,8 +288,8 @@ func (s *Store) inTx(ctx context.Context, f func(*sql.Tx) error) error {
 	return tx.Commit()
 }
 
-// PurgeOrphans deletes transfers with no own side (left over after an address
-// was removed or stopped being "mine") and the sync cursors of such addresses,
+// PurgeOrphans deletes transfers with no synced side, mine or watched (left over after
+// an address was removed or stopped being synced) and the sync cursors of such addresses,
 // so a later re-add syncs from scratch. Reviewed transfers (category or comment) are kept.
 func (s *Store) PurgeOrphans(ctx context.Context) (int64, error) {
 	var n int64
@@ -293,14 +297,14 @@ func (s *Store) PurgeOrphans(ctx context.Context) (int64, error) {
 		res, err := tx.ExecContext(ctx, `
 			DELETE FROM transfers
 			WHERE category IS NULL AND comment = ''
-			  AND from_addr NOT IN (SELECT address FROM addresses WHERE kind = 'mine')
-			  AND to_addr NOT IN (SELECT address FROM addresses WHERE kind = 'mine')`)
+			  AND from_addr NOT IN (SELECT address FROM addresses WHERE kind IN ('mine', 'watch'))
+			  AND to_addr NOT IN (SELECT address FROM addresses WHERE kind IN ('mine', 'watch'))`)
 		if err != nil {
 			return err
 		}
 		n, _ = res.RowsAffected()
 		_, err = tx.ExecContext(ctx, `
-			DELETE FROM sync_cursors WHERE address NOT IN (SELECT address FROM addresses WHERE kind = 'mine')`)
+			DELETE FROM sync_cursors WHERE address NOT IN (SELECT address FROM addresses WHERE kind IN ('mine', 'watch'))`)
 		return err
 	})
 	return n, err

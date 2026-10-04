@@ -104,8 +104,8 @@ func (s *Server) balancesData(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, report.BuildBalances(ts, book))
 }
 
-// graphData: known links for the chosen period, plus optional unknown
-// counterparties limited to the last N days and the top M addresses.
+// graphData links book entries; outside addresses come in by the options:
+// top senders/receivers within the last N days, and shared counterparties.
 func (s *Server) graphData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := r.URL.Query()
@@ -114,55 +114,39 @@ func (s *Server) graphData(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	base, err := s.filterFromQuery(ctx, q)
+	f, err := s.filterFromQuery(ctx, q)
 	if err != nil {
 		serverError(w, err)
 		return
 	}
-	var known []ledger.Transfer
+	f.OnlyLedger = false // watched wallets are the point here
+	var ts []ledger.Transfer
 	if len(book) > 0 {
-		addrs := make([]string, 0, len(book))
+		f.Addresses = make([]string, 0, len(book))
 		for a := range book {
-			addrs = append(addrs, a)
+			f.Addresses = append(f.Addresses, a)
 		}
-		f := base
-		f.FromAddrs, f.ToAddrs = addrs, addrs
-		if known, err = s.store.Transfers(ctx, f); err != nil {
+		if ts, err = s.store.Transfers(ctx, f); err != nil {
 			serverError(w, err)
 			return
 		}
 	}
-
-	var classes []ledger.Class
-	if q.Get("unknown_in") != "" {
-		classes = append(classes, ledger.ClassInflow)
-	}
-	if q.Get("unknown_out") != "" {
-		classes = append(classes, ledger.ClassOutflow)
-	}
-	var unknown []ledger.Transfer
-	if len(classes) > 0 {
-		days, _ := strconv.Atoi(q.Get("days"))
-		days = min(max(days, 1), 366)
-		end := time.Now()
-		if base.To > 0 {
-			end = time.Unix(base.To, 0)
-		}
-		f := store.Filter{
-			From: end.AddDate(0, 0, -days).Unix(), To: end.Unix(),
-			AssetID: base.AssetID, Classes: classes, HideSpam: true, HideZero: true,
-		}
-		if unknown, err = s.store.Transfers(ctx, f); err != nil {
-			serverError(w, err)
-			return
-		}
+	days, _ := strconv.Atoi(q.Get("days"))
+	days = min(max(days, 1), 3660)
+	end := time.Now()
+	if f.To > 0 {
+		end = time.Unix(f.To, 0)
 	}
 	maxUnknown, err := strconv.Atoi(q.Get("max"))
 	if err != nil {
 		maxUnknown = 25
 	}
-	writeJSON(w, report.BuildGraph(known, unknown, book, report.GraphOptions{
-		Group:      q.Get("group") != "0",
-		MaxUnknown: maxUnknown,
+	writeJSON(w, report.BuildGraph(ts, book, report.GraphOptions{
+		Group:        q.Get("group") != "0",
+		UnknownIn:    q.Get("unknown_in") != "",
+		UnknownOut:   q.Get("unknown_out") != "",
+		UnknownSince: end.AddDate(0, 0, -days).Unix(),
+		MaxUnknown:   maxUnknown,
+		Common:       q.Get("common") != "",
 	}))
 }

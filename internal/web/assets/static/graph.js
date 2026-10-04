@@ -6,18 +6,21 @@
 
   const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const colors = {
-    mine: css('--mine'), exchange: css('--exchange'), external: css('--external'),
+    mine: css('--mine'), exchange: css('--exchange'), external: css('--external'), watch: css('--watch'), shared: css('--out'),
     in: css('--in'), out: css('--out'), text: css('--text'), muted: css('--muted'), panel: css('--panel'),
   };
   const classColor = {
     internal: colors.mine, cex_deposit: colors.exchange, cex_withdrawal: colors.exchange,
-    inflow: colors.in, outflow: colors.out, unknown: colors.muted,
+    inflow: colors.in, outflow: colors.out, unknown: colors.watch,
   };
   const classLabel = {
     internal: 'Внутренний', cex_deposit: 'На биржу', cex_withdrawal: 'С биржи',
     inflow: 'Входящий', outflow: 'Исходящий', unknown: 'Неизвестно',
   };
-  const kindLabel = { mine: 'Мой', exchange: 'Биржа', external: 'Чужой', unknown: 'Неизвестный адрес', more: 'Свёрнутые адреса' };
+  const kindLabel = {
+    mine: 'Мой', exchange: 'Биржа', external: 'Чужой', watch: 'Наблюдаемый',
+    unknown: 'Неизвестный адрес', shared: 'Общий контрагент: связан с несколькими кошельками', more: 'Свёрнутые адреса',
+  };
   const fmt = (v) => Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 6 });
   const day = (ts) => new Date(ts * 1000).toISOString().slice(0, 10);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -42,6 +45,8 @@
       { selector: 'node[kind = "mine"]', style: { shape: 'ellipse', 'font-weight': 600, 'font-size': 12 } },
       { selector: 'node[kind = "exchange"]', style: { shape: 'round-rectangle' } },
       { selector: 'node[kind = "external"]', style: { shape: 'diamond' } },
+      { selector: 'node[kind = "watch"]', style: { shape: 'hexagon', 'font-weight': 600, 'font-size': 12 } },
+      { selector: 'node[kind = "shared"]', style: { shape: 'ellipse', 'background-opacity': 0.85, 'font-size': 10 } },
       { selector: 'node[kind = "unknown"]', style: {
         shape: 'ellipse', 'background-opacity': 0.15, 'border-style': 'dashed', 'border-color': colors.external,
         'font-size': 9, 'min-zoomed-font-size': 8, 'text-background-opacity': 0,
@@ -70,16 +75,26 @@
         idealEdgeLength: (e) => (e.data('unknown') ? 170 : 140) };
     }
     if (name === 'concentric') {
-      const rank = { mine: 4, exchange: 3, external: 2, unknown: 1, more: 0 };
+      const rank = { mine: 4, watch: 4, shared: 3, exchange: 3, external: 2, unknown: 1, more: 0 };
       return { ...base, concentric: (n) => rank[n.data('kind')] ?? 0, levelWidth: () => 1, minNodeSpacing: 40 };
     }
     return { ...base, directed: true, spacingFactor: 1.2, grid: false,
       roots: cy.nodes().filter((n) => n.indegree(false) === 0) };
   }
 
+  // fit shows everything but never zooms a small graph into giant nodes.
+  function fit() {
+    cy.fit(undefined, 40);
+    if (cy.zoom() > 1.2) {
+      cy.zoom(1.2);
+      cy.center();
+    }
+  }
+
   function relayout(clear) {
     if (clear) savePositions({});
-    cy.layout(layoutOptions(document.getElementById('graph-layout').value)).run();
+    cy.layout({ ...layoutOptions(document.getElementById('graph-layout').value), fit: false }).run();
+    fit();
     rememberAll();
   }
 
@@ -105,7 +120,7 @@
     const maxNode = Math.max(1, ...nodes.map((n) => n.count));
     const nodeColor = (n) => n.color || colors[n.kind] || colors.external;
     const size = (n) => {
-      const base = n.kind === 'mine' ? 34 : n.kind === 'unknown' || n.kind === 'more' ? 16 : 26;
+      const base = n.kind === 'mine' || n.kind === 'watch' ? 34 : n.kind === 'unknown' || n.kind === 'more' ? 16 : 24;
       return base + 22 * Math.sqrt(n.count / maxNode);
     };
     cy.elements().remove();
@@ -122,22 +137,29 @@
     } else {
       cy.nodes().forEach((n) => { if (saved[n.id()]) n.position(saved[n.id()]); });
       if (missing.length) {
-        // Place new nodes around their neighbours, keep the rest where the user left them.
+        // Seed new nodes next to a neighbour, then let the force layout settle
+        // from the current positions, so what the user arranged stays recognisable.
         missing.forEach((n) => {
           const nb = n.neighborhood('node').filter((m) => saved[m.id()]);
           const c = nb.length ? nb[0].position() : { x: 0, y: 0 };
-          n.position({ x: c.x + (Math.random() - 0.5) * 160, y: c.y + (Math.random() - 0.5) * 160 });
+          n.position({ x: c.x + (Math.random() - 0.5) * 200, y: c.y + (Math.random() - 0.5) * 200 });
         });
+        if (document.getElementById('graph-layout').value === 'cose') {
+          cy.layout({ ...layoutOptions('cose', false), randomize: false, numIter: 800 }).run();
+        }
         rememberAll();
       }
-      cy.fit(undefined, 40);
+      fit();
     }
 
     const unknownCount = nodes.filter((n) => n.kind === 'unknown').length;
+    const sharedCount = nodes.filter((n) => n.kind === 'shared').length;
     document.getElementById('graph-summary').textContent =
       `Узлов: ${nodes.length}, связей: ${edges.length}` +
+      (sharedCount ? `, общих контрагентов: ${sharedCount}` : '') +
       (unknownCount ? `, неизвестных адресов: ${unknownCount}` : '') +
-      (g.hiddenUnknown ? ` (ещё ${g.hiddenUnknown} свёрнуто)` : '');
+      (g.hiddenUnknown ? ` (ещё ${g.hiddenUnknown} свёрнуто)` : '') +
+      (nodes.length && !edges.length ? '. Связей не найдено: включи «общие контрагенты» или расширь период.' : '');
     if (!nodes.length) panel.innerHTML = '<p class="muted">Нет связей за выбранный период.</p>';
   }
 
@@ -159,10 +181,10 @@
     }
     html += `<div>Связей: ${edges.length} · входящих переводов: ${inCount} · исходящих: ${outCount}</div>`;
     if (d.ref) html += `<div class="row"><a class="button" href="${txLink({ wallet: d.ref })}">Транзакции</a></div>`;
-    if (d.kind === 'unknown') {
+    if (d.kind === 'unknown' || d.kind === 'shared') {
       html += `<form class="row" id="graph-add">
         <input name="name" placeholder="имя, напр. Bybit" required>
-        <select name="kind"><option value="external">Чужой</option><option value="exchange">Биржа</option><option value="mine">Мой</option></select>
+        <select name="kind"><option value="external">Чужой</option><option value="exchange">Биржа</option><option value="watch">Наблюдаемый</option><option value="mine">Мой</option></select>
         <button class="primary">В адресную книгу</button></form>`;
     }
     panel.innerHTML = html;
@@ -205,6 +227,19 @@
     a.download = 'walletflow-graph.png';
     a.click();
   });
+  // While a sync runs, redraw every few seconds as history arrives, and once more at the end.
+  let lastReload = 0, wasRunning = false;
+  document.body.addEventListener('htmx:afterSettle', () => {
+    const st = document.getElementById('sync-status');
+    if (!st) return;
+    const running = st.hasAttribute('hx-get'); // the status polls itself only while running
+    if ((running && Date.now() - lastReload > 4000) || (wasRunning && !running)) {
+      lastReload = Date.now();
+      load();
+    }
+    wasRunning = running;
+  });
+
   form.addEventListener('change', (e) => { if (e.target.id !== 'graph-layout') load(); });
 
   // Restore filters from the URL.

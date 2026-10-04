@@ -96,3 +96,42 @@ func TestGraphData(t *testing.T) {
 		t.Errorf("with unknown = %d nodes %d edges", len(g.Nodes), len(g.Edges))
 	}
 }
+
+func TestWalletsAddExportRoundTrip(t *testing.T) {
+	s, h := testServer(t)
+	post := func(form url.Values) *httptest.ResponseRecorder {
+		r := httptest.NewRequest("POST", "/wallets", strings.NewReader(form.Encode()))
+		r.Host = "127.0.0.1:8080"
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	// Single add with the three fields, then straight to the graph.
+	w := post(url.Values{"address": {"TAiK6ijSGs6TPNavfFK1W86iKeZf7otdAG"}, "name": {"Suspect"}, "kind": {"watch"}, "then": {"graph"}})
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/graph?common=1" {
+		t.Fatalf("add+graph = %d %s", w.Code, w.Header().Get("Location"))
+	}
+	s.sync.Stop()
+
+	exp := get(t, h, "/wallets/export").Body.String()
+	for _, want := range []string{"TAiK6ijSGs6TPNavfFK1W86iKeZf7otdAG, Suspect, наблюдаемый", "TQrY8tryqsYVCYS3MFbtffiPp2ccyn4STm, Main, мой"} {
+		if !strings.Contains(exp, want) {
+			t.Errorf("export misses %q:\n%s", want, exp)
+		}
+	}
+	// Import the export back into a fresh server: same book.
+	s2, h2 := testServer(t)
+	_ = s2
+	r := httptest.NewRequest("POST", "/wallets", strings.NewReader(url.Values{"lines": {exp + "TXgjzMc3vRxqtZcGyHhjtQuPUts9MDZpNX, , биржа\n"}}.Encode()))
+	r.Host = "127.0.0.1:8080"
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	h2.ServeHTTP(httptest.NewRecorder(), r)
+	book, _ := s2.store.Book(context.Background())
+	if a := book["TAiK6ijSGs6TPNavfFK1W86iKeZf7otdAG"]; a.Kind != ledger.KindWatch || a.Name != "Suspect" {
+		t.Errorf("round trip = %+v", a)
+	}
+	if a := book["TXgjzMc3vRxqtZcGyHhjtQuPUts9MDZpNX"]; a.Kind != ledger.KindExchange || a.Name != "" {
+		t.Errorf("empty name line = %+v", a)
+	}
+}

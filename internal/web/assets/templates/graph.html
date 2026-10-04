@@ -8,6 +8,7 @@
   <select name="asset"><option value="">все активы</option>{{with .Data}}{{range .Assets}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) ($p.Q "asset")}}selected{{end}}>{{.Symbol}} · {{chainName .Chain}}</option>{{end}}{{end}}</select>
   <label title="Адреса с одинаковым именем показываются одним узлом"><input type="checkbox" name="group" value="1" checked> группировать по имени</label>
   <span class="sep"></span>
+  <label title="Адреса вне книги, связанные с двумя и более кошельками, за весь выбранный период. Так видно, как кошельки связаны через посредников"><input type="checkbox" name="common" value="1"> общие контрагенты</label>
   <label><input type="checkbox" name="unknown_in" value="1"> входящие от неизвестных</label>
   <label><input type="checkbox" name="unknown_out" value="1"> исходящие к неизвестным</label>
   <label>за <select name="days">
@@ -34,12 +35,15 @@
   <span><i class="dot mine"></i>мой</span>
   <span><i class="dot exchange"></i>биржа</span>
   <span><i class="dot external"></i>чужой (в адресной книге)</span>
+  <span><i class="dot watch"></i>наблюдаемый</span>
+  <span><i class="dot shared"></i>общий контрагент</span>
   <span><i class="dot unknown"></i>неизвестный</span>
   <span class="sep"></span>
   <span><i class="line internal"></i>внутренний</span>
   <span><i class="line cex"></i>с биржей</span>
   <span><i class="line inflow"></i>входящий</span>
   <span><i class="line outflow"></i>исходящий</span>
+  <span><i class="line watchline"></i>вне твоего учёта</span>
   <span class="muted">толщина = число переводов</span>
 </div>
 <script src="/static/cytoscape.min.js"></script>

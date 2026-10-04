@@ -2,7 +2,7 @@
 <div id="sync-status" class="sync-status" {{if .Running}}hx-get="/sync/status" hx-trigger="every 1s" hx-swap="outerHTML"{{end}}>
   {{if .Running}}
     <div>{{if .Total}}{{.Step}} / {{.Total}}{{end}}</div>
-    <div class="muted">{{.Message}}</div>
+    {{range .Active}}<div class="muted">{{.}}</div>{{else}}<div class="muted">{{.Message}}</div>{{end}}
     <button class="link" hx-post="/sync/stop" hx-target="#sync-status" hx-swap="outerHTML">стоп</button>
   {{else if not .Finished.IsZero}}
     <div>{{.Message}}</div>

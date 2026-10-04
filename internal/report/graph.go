@@ -14,7 +14,7 @@ import (
 type GraphNode struct {
 	ID        string   `json:"id"`
 	Label     string   `json:"label"`
-	Kind      string   `json:"kind"` // mine | exchange | external | unknown | more
+	Kind      string   `json:"kind"` // mine | exchange | external | watch | unknown | shared | more
 	Color     string   `json:"color,omitempty"`
 	Ref       string   `json:"ref,omitempty"` // value for the transactions filter
 	Addresses []string `json:"addresses,omitempty"`
@@ -52,25 +52,38 @@ type Graph struct {
 
 // GraphOptions tune BuildGraph.
 type GraphOptions struct {
-	Group      bool // merge addresses with the same name into one node
-	MaxUnknown int  // unknown counterparties shown per direction, the rest are folded
+	Group        bool  // merge addresses with the same name into one node
+	UnknownIn    bool  // show senders outside the book
+	UnknownOut   bool  // show receivers outside the book
+	UnknownSince int64 // only transfers since this time count for UnknownIn/Out
+	MaxUnknown   int   // unknown counterparties shown per direction, the rest are folded
+	// Common shows every outside address linked to two or more book nodes,
+	// whatever the window and the limit: the way to see how wallets are connected.
+	Common bool
 }
 
 // BuildGraph links address book entries by the transfers between them.
-// known holds transfers between book addresses; unknown holds transfers
-// between an own address and addresses outside the book.
-func BuildGraph(known, unknown []ledger.Transfer, book ledger.Book, opt GraphOptions) Graph {
+// ts may hold any transfers touching the book; the rest is decided by opt.
+func BuildGraph(ts []ledger.Transfer, book ledger.Book, opt GraphOptions) Graph {
 	b := graphBuilder{book: book, opt: opt, nodes: map[string]*GraphNode{}, edges: map[[2]string]*edgeAcc{}}
-	for _, t := range known {
-		if _, ok := book[t.From]; !ok {
-			continue
+	var outside []ledger.Transfer
+	for _, t := range ts {
+		_, fromKnown := book[t.From]
+		_, toKnown := book[t.To]
+		switch {
+		case fromKnown && toKnown:
+			b.add(b.bookNode(t.From), b.bookNode(t.To), t, false)
+		case fromKnown || toKnown:
+			outside = append(outside, t)
 		}
-		if _, ok := book[t.To]; !ok {
-			continue
-		}
-		b.add(b.bookNode(t.From), b.bookNode(t.To), t, false)
 	}
-	b.addUnknown(unknown)
+	b.addOutside(outside)
+	// Synced wallets always show, even without links: "no connection" is an answer too.
+	for addr, a := range book {
+		if a.Kind.Synced() {
+			b.bookNode(addr)
+		}
+	}
 	return b.result()
 }
 
@@ -99,12 +112,16 @@ func (b *graphBuilder) node(id string, mk func() GraphNode) *GraphNode {
 	return n
 }
 
+func (b *graphBuilder) nodeID(addr string) string {
+	if a := b.book[addr]; b.opt.Group && a.Name != "" {
+		return "n:" + a.Name
+	}
+	return "a:" + addr
+}
+
 func (b *graphBuilder) bookNode(addr string) *GraphNode {
 	a := b.book[addr]
-	id := "a:" + addr
-	if b.opt.Group && a.Name != "" {
-		id = "n:" + a.Name
-	}
+	id := b.nodeID(addr)
 	n := b.node(id, func() GraphNode {
 		ref := addr
 		if b.opt.Group && a.Name != "" {
@@ -151,21 +168,45 @@ func (b *graphBuilder) add(from, to *GraphNode, t ledger.Transfer, unknown bool)
 	to.Count++
 }
 
-// addUnknown keeps the most active unknown counterparties per direction and folds the rest.
-func (b *graphBuilder) addUnknown(ts []ledger.Transfer) {
+// addOutside adds addresses outside the book: shared ones (Common), then the
+// most active ones per direction within the window; the rest is folded.
+func (b *graphBuilder) addOutside(ts []ledger.Transfer) {
 	type side struct {
-		incoming bool
+		incoming bool // money goes from the outside address into the book
 		addr     string
+	}
+	// bookSide returns the book address of t and whether t comes into the book.
+	bookSide := func(t ledger.Transfer) (string, side) {
+		if _, ok := b.book[t.To]; ok {
+			return t.To, side{true, t.From}
+		}
+		return t.From, side{false, t.To}
+	}
+
+	shared := map[string]bool{}
+	if b.opt.Common {
+		links := map[string]map[string]bool{} // outside address → book node ids
+		for _, t := range ts {
+			own, s := bookSide(t)
+			if links[s.addr] == nil {
+				links[s.addr] = map[string]bool{}
+			}
+			links[s.addr][b.nodeID(own)] = true
+		}
+		for addr, nodes := range links {
+			if len(nodes) >= 2 {
+				shared[addr] = true
+			}
+		}
+	}
+
+	inWindow := func(t ledger.Transfer, s side) bool {
+		return t.TS >= b.opt.UnknownSince && (s.incoming && b.opt.UnknownIn || !s.incoming && b.opt.UnknownOut)
 	}
 	counts := map[side]int{}
 	for _, t := range ts {
-		if _, ok := b.book[t.Counterparty()]; ok {
-			continue
-		}
-		if t.Class.Incoming() {
-			counts[side{true, t.From}]++
-		} else {
-			counts[side{false, t.To}]++
+		if _, s := bookSide(t); !shared[s.addr] && inWindow(t, s) {
+			counts[s]++
 		}
 	}
 	keep := map[side]bool{}
@@ -187,37 +228,37 @@ func (b *graphBuilder) addUnknown(ts []ledger.Transfer) {
 			}
 		}
 	}
+
 	for _, t := range ts {
-		mineAddr, other := t.To, t.From
-		if !t.Class.Incoming() {
-			mineAddr, other = t.From, t.To
-		}
-		if _, ok := b.book[mineAddr]; !ok {
-			continue
-		}
-		if _, ok := b.book[other]; ok {
-			continue // known counterparties come through the known list
-		}
-		s := side{t.Class.Incoming(), other}
+		own, s := bookSide(t)
 		var un *GraphNode
-		if keep[s] {
-			un = b.node("u:"+other, func() GraphNode {
-				return GraphNode{ID: "u:" + other, Label: address.Short(other), Kind: "unknown", Ref: other, Addresses: []string{other}}
-			})
-		} else {
+		switch {
+		case shared[s.addr]:
+			un = b.outsideNode(s.addr, "shared")
+		case !inWindow(t, s):
+			continue
+		case keep[s]:
+			un = b.outsideNode(s.addr, "unknown")
+		default:
 			id, label := "more:out", "другие получатели"
 			if s.incoming {
 				id, label = "more:in", "другие отправители"
 			}
 			un = b.node(id, func() GraphNode { return GraphNode{ID: id, Label: label, Kind: "more"} })
 		}
-		me := b.bookNode(mineAddr)
+		me := b.bookNode(own)
 		if s.incoming {
 			b.add(un, me, t, true)
 		} else {
 			b.add(me, un, t, true)
 		}
 	}
+}
+
+func (b *graphBuilder) outsideNode(addr, kind string) *GraphNode {
+	return b.node("u:"+addr, func() GraphNode {
+		return GraphNode{ID: "u:" + addr, Label: address.Short(addr), Kind: kind, Ref: addr, Addresses: []string{addr}}
+	})
 }
 
 func (b *graphBuilder) result() Graph {

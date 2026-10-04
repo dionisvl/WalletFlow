@@ -1,22 +1,49 @@
 {{define "content"}}
 {{with .Data}}
 <form class="card" method="post" action="/wallets">
-  <label>Адреса, по одному на строке. Можно так: <code>адрес, имя, тип</code> (тип: мой / биржа / чужой).</label>
-  <textarea name="lines" rows="5" placeholder="0x1234…abcd, Ledger, мой
-TXyz…, Binance депозит, биржа" required autofocus></textarea>
-  <div class="row">
-    <span>По умолчанию:</span>
+  <h2>Добавить кошелёк</h2>
+  <div class="add-row">
+    <input name="address" placeholder="адрес 0x… или T…" required autofocus spellcheck="false" autocomplete="off" class="addr-input">
+    <input name="name" placeholder="имя, напр. Ledger">
     <select name="kind">{{range kinds}}<option value="{{.}}">{{kindLabel .}}</option>{{end}}</select>
-    <input name="name" placeholder="имя (если не указано в строке)">
     <button class="primary">Добавить</button>
+    <button name="then" value="graph" title="Добавить, запустить синк и открыть граф связей">Добавить и показать граф</button>
   </div>
-  <p class="muted">Поддерживаются EVM (<code>0x…</code>: {{range $i, $c := $.Chains}}{{if eq $c.Family "evm"}}{{$c.Name}} {{end}}{{end}}) и Tron (<code>T…</code>).
+  <dl class="kinds">
+    <dt class="kind-mine">Мой</dt><dd>история скачивается и входит в твой учёт: Inbox, балансы, экспорт</dd>
+    <dt class="kind-exchange">Биржа</dt><dd>не скачивается; переводы с ней распознаются сами и не идут в Inbox</dd>
+    <dt class="kind-external">Чужой</dt><dd>не скачивается; просто имя для контрагента, переводы остаются в Inbox</dd>
+    <dt class="kind-watch">Наблюдаемый</dt><dd>история скачивается только для графа связей, в учёт не входит</dd>
+  </dl>
+  <p class="muted">Поддерживаются EVM (<code>0x…</code>: {{$.EVMChains}}) и Tron (<code>T…</code>).
     Только публичные адреса, никаких seed-фраз и ключей.</p>
 </form>
-{{if .Added}}<p class="ok">Добавлено: {{.Added}}. Нажми «Синк», чтобы загрузить историю.</p>{{end}}
+
+<details class="card" {{if .Errors}}open{{end}}>
+  <summary><b>Добавить списком</b> <span class="muted">· несколько адресов сразу или файл, выгруженный кнопкой «Выгрузить список»</span></summary>
+  <form method="post" action="/wallets">
+    <label>По одному на строке: <code>адрес, имя, тип</code>. Имя и тип можно не указывать.</label>
+    <textarea name="lines" rows="6" placeholder="0x1234…abcd, Ledger, мой
+TXyz…, Binance депозит, биржа
+TAbc…, Подозрительный, наблюдаемый" required></textarea>
+    <div class="row">
+      <span>Если в строке не указано:</span>
+      <select name="kind">{{range kinds}}<option value="{{.}}">{{kindLabel .}}</option>{{end}}</select>
+      <input name="name" placeholder="имя">
+      <button class="primary">Добавить</button>
+      <button name="then" value="graph">Добавить и показать граф</button>
+    </div>
+  </form>
+</details>
+{{if .Added}}<p class="ok">Добавлено: {{.Added}}. Нажми «Синк», чтобы загрузить историю «моих» и «наблюдаемых».</p>{{end}}
 {{range .Errors}}<p class="error">{{.}}</p>{{end}}
 
 {{if .Addresses}}
+<div class="row toolbar">
+  <span class="muted">Адресов: {{len .Addresses}}</span>
+  <a class="button" href="/wallets/export">Выгрузить список</a>
+  <a class="button" href="/graph?common=1">Граф связей</a>
+</div>
 <table class="table">
   <thead><tr><th>Цвет</th><th>Имя</th><th>Тип</th><th>Адрес</th><th>Сеть</th><th></th></tr></thead>
   <tbody>

@@ -1,13 +1,13 @@
 :root {
   --bg: #f6f7f9; --panel: #fff; --text: #1b1e24; --muted: #6b7280; --border: #e3e6eb;
   --accent: #2f6fed; --accent-text: #fff; --in: #13854e; --out: #c2410c; --danger: #b91c1c;
-  --mine: #2f6fed; --exchange: #9333ea; --external: #6b7280; --sel: #e8f0fe;
+  --mine: #2f6fed; --exchange: #9333ea; --external: #6b7280; --watch: #0d9488; --sel: #e8f0fe;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #111317; --panel: #1a1d23; --text: #e6e8eb; --muted: #9aa1ac; --border: #2b2f37;
     --accent: #5b8cff; --in: #34d399; --out: #fb923c; --danger: #f87171;
-    --mine: #5b8cff; --exchange: #c084fc; --external: #9aa1ac; --sel: #1f2a44;
+    --mine: #5b8cff; --exchange: #c084fc; --external: #9aa1ac; --watch: #2dd4bf; --sel: #1f2a44;
   }
 }
 * { box-sizing: border-box; }
@@ -119,11 +119,26 @@ td.known { font-weight: 600; }
 .legend .dot.exchange { background: var(--exchange); border-radius: 3px; }
 .legend .dot.external { background: var(--external); transform: rotate(45deg); border-radius: 1px; }
 .legend .dot.unknown { border: 1.5px dashed var(--external); }
+.legend .dot.watch { background: var(--watch); clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); border-radius: 0; }
+.legend .dot.shared { background: var(--out); opacity: .8; }
 .legend .line { display: inline-block; width: 22px; height: 3px; margin-right: 5px; vertical-align: 3px; border-radius: 2px; }
 .legend .line.internal { background: var(--mine); }
 .legend .line.cex { background: var(--exchange); }
 .legend .line.inflow { background: var(--in); }
 .legend .line.outflow { background: var(--out); }
+.legend .line.watchline { background: var(--watch); }
 @media (max-width: 1000px) { .graph-wrap { grid-template-columns: 1fr; } }
 .chip { background: var(--sel); border-radius: 12px; padding: 3px 10px; font-size: 13px; }
 .chip a { margin-left: 6px; }
+
+/* Wallets */
+.add-row { display: grid; grid-template-columns: minmax(260px, 2fr) minmax(140px, 1fr) auto auto auto; gap: 8px; }
+.add-row .addr-input { font-family: ui-monospace, monospace; font-size: 13px; }
+.kinds { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 12px 0 0; font-size: 13px; }
+.kinds dt { font-weight: 600; }
+.kinds dd { margin: 0; color: var(--muted); }
+details.card > summary { cursor: pointer; }
+details.card form { margin-top: 10px; }
+.toolbar { margin: 0 0 10px; }
+.kind-watch { color: var(--watch); }
+@media (max-width: 900px) { .add-row { grid-template-columns: 1fr; } }

@@ -83,9 +83,9 @@ func (s *Store) SetAssetSpam(ctx context.Context, id int64, spam bool) error {
 	return err
 }
 
-// IsMine reports whether addr is in the book as an own address.
-func (s *Store) IsMine(ctx context.Context, addr string) (bool, error) {
+// IsSynced reports whether addr is in the book as a synced (mine or watched) address.
+func (s *Store) IsSynced(ctx context.Context, addr string) (bool, error) {
 	var n int
-	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM addresses WHERE address = ? AND kind = 'mine'", addr).Scan(&n)
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM addresses WHERE address = ? AND kind IN ('mine', 'watch')", addr).Scan(&n)
 	return n > 0, err
 }

@@ -67,6 +67,8 @@ func (s *Server) filterFromQuery(ctx context.Context, q url.Values) (store.Filte
 		HideZero: q.Get("zero") == "",
 	}
 	f.AssetID, _ = strconv.ParseInt(q.Get("asset"), 10, 64)
+	// Watched wallets' own history shows only when asked for: by class, wallet, link or the checkbox.
+	f.OnlyLedger = q.Get("all") == "" && f.Class == "" && q.Get("wallet") == "" && q.Get("src") == "" && q.Get("dst") == ""
 	switch c := q.Get("category"); c {
 	case "":
 	case "-":

@@ -15,6 +15,9 @@ func TestClassify(t *testing.T) {
 		{KindExchange, KindExchange, ClassUnknown},
 		{KindExternal, KindExchange, ClassUnknown},
 		{KindExternal, KindExternal, ClassUnknown},
+		{KindWatch, KindMine, ClassInflow},
+		{KindMine, KindWatch, ClassOutflow},
+		{KindWatch, KindExchange, ClassUnknown},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.from)+"->"+string(tt.to), func(t *testing.T) {

@@ -35,6 +35,17 @@ func (p Page) Known(addr string) bool {
 
 func (p Page) Q(key string) string { return p.Query.Get(key) }
 
+// EVMChains lists the names of enabled EVM chains, comma separated.
+func (p Page) EVMChains() string {
+	var names []string
+	for _, c := range p.Chains {
+		if c.Family == address.EVM {
+			names = append(names, c.Name)
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
 // Fee formats the fee of t when the owner paid it.
 func (p Page) Fee(t ledger.Transfer) string {
 	if t.FeeRaw == "" || t.FeeRaw == "0" || !p.Book.IsMine(t.From) {

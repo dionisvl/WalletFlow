@@ -36,6 +36,9 @@ func (b Book) KindOf(addr string) Kind {
 	return KindExternal
 }
 
+// IsSynced reports whether addr is synced (mine or watched).
+func (b Book) IsSynced(addr string) bool { return b[addr].Kind.Synced() }
+
 // IsMine reports whether addr belongs to the owner.
 func (b Book) IsMine(addr string) bool { return b[addr].Kind == KindMine }
 
