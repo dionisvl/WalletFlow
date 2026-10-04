@@ -93,3 +93,9 @@ document.addEventListener('click', (e) => {
 
   if (document.getElementById('inbox-list')) select(items()[0]);
 })();
+
+// Language switch: the server sets a cookie and sends us back to this page.
+document.getElementById('lang-select')?.addEventListener('change', (e) => {
+  location.href = '/lang?set=' + encodeURIComponent(e.target.value) +
+    '&back=' + encodeURIComponent(location.pathname + location.search);
+});

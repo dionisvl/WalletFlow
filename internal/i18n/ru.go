@@ -15,6 +15,7 @@ var ru = map[string]string{
 	"Sync":              "Синк",
 	"stop":              "стоп",
 	"refresh":           "обновить",
+	"Lang:":             "Язык:",
 
 	"Demo mode: sample data, sync is off.": "Демо-режим: тестовые данные, синк выключен.",
 

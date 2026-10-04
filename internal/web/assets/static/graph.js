@@ -68,10 +68,10 @@
   });
 
   function layoutOptions(name, fit = true) {
-    const base = { name, animate: false, fit, padding: 40 };
+    const base = { name, animate: false, fit, padding: 40, nodeDimensionsIncludeLabels: true };
     if (name === 'cose') {
       return { ...base, randomize: true, numIter: 2500, gravity: 0.25, componentSpacing: 120, nodeOverlap: 30,
-        nodeRepulsion: (n) => (n.data('kind') === 'unknown' ? 60000 : 120000),
+        nodeRepulsion: (n) => (n.data('kind') === 'unknown' ? 90000 : 140000),
         idealEdgeLength: (e) => (e.data('unknown') ? 170 : 140) };
     }
     if (name === 'concentric') {

@@ -31,7 +31,9 @@
     <button class="primary" hx-post="/sync" hx-target="#sync-status" hx-swap="outerHTML">{{t "Sync"}}</button>
     {{end}}
     {{template "sync-status" .}}
-    <div class="lang-switch">{{$cur := .Lang}}{{range .Langs}}<a href="/lang?set={{.}}" class="{{if eq . $cur}}active{{end}}">{{.Name}}</a>{{end}}</div>
+    <label class="lang-switch">{{t "Lang:"}}
+      <select id="lang-select">{{$cur := .Lang}}{{range .Langs}}<option value="{{.}}" {{if eq . $cur}}selected{{end}}>{{.Name}}</option>{{end}}</select>
+    </label>
   </div>
 </aside>
 <main>
