@@ -1,0 +1,76 @@
+{{define "sync-status"}}{{with .Sync}}
+<div id="sync-status" class="sync-status" {{if .Running}}hx-get="/sync/status" hx-trigger="every 1s" hx-swap="outerHTML"{{end}}>
+  {{if .Running}}
+    <div>{{if .Total}}{{.Step}} / {{.Total}}{{end}}</div>
+    <div class="muted">{{.Message}}</div>
+    <button class="link" hx-post="/sync/stop" hx-target="#sync-status" hx-swap="outerHTML">стоп</button>
+  {{else if not .Finished.IsZero}}
+    <div>{{.Message}}</div>
+    <div class="muted">{{.Finished.Format "15:04"}} · <a href="">обновить</a></div>
+  {{end}}
+  {{range .Errors}}<div class="error">{{.}}</div>{{end}}
+</div>{{end}}{{end}}
+
+{{define "inbox-list"}}
+<div id="inbox-list">
+  {{with .Data}}
+  {{if .Items}}
+  <form id="bulk" class="bulk" hx-post="/transfers/bulk" hx-target="#inbox-list" hx-swap="outerHTML">
+    <span class="muted">Отмечено: <b id="bulk-count">0</b></span>
+    <select name="category">{{range $.Categories}}<option>{{.}}</option>{{end}}</select>
+    <button type="submit">Применить к отмеченным</button>
+  </form>
+  <p class="muted">Клавиши: <kbd>j</kbd>/<kbd>k</kbd> навигация, <kbd>1</kbd>…<kbd>9</kbd> категория,
+    <kbd>x</kbd> отметить, <kbd>r</kbd> «правило», <kbd>c</kbd> комментарий.</p>
+  {{range .Items}}{{template "inbox-row" (pair $ .)}}{{end}}
+  {{if gt .Total (len .Items)}}<p class="muted more" data-more>Показаны первые {{len .Items}}. Разметь их, и появятся следующие.</p>{{end}}
+  {{else}}
+  <div class="empty">Inbox пуст 🎉<br><span class="muted">Все транзакции с чужими адресами размечены.</span></div>
+  {{end}}
+  {{end}}
+</div>
+{{end}}
+
+{{define "inbox-row"}}{{$p := .P}}{{$t := .T}}{{$cp := $t.Counterparty}}
+<div class="card item {{if $t.Incoming}}in{{else}}out{{end}}" id="t{{$t.ID}}" tabindex="-1">
+  <div class="card-head">
+    <input type="checkbox" class="pick" name="id" value="{{$t.ID}}" form="bulk">
+    <span class="dir">{{if $t.Incoming}}↓ Входящий{{else}}↑ Исходящий{{end}}</span>
+    <span class="amount">{{if $t.Incoming}}+{{else}}−{{end}}{{$t.Amount}} {{$t.Asset.Symbol}}</span>
+    <span class="muted">{{chainName $t.Chain}} · {{date $t.Time}} UTC</span>
+    <a class="muted" href="{{explorer $t.Chain $t.TxHash}}" target="_blank" rel="noopener">{{short $t.TxHash}} ↗</a>
+  </div>
+  <div class="card-body">
+    <div>
+      {{if $t.Incoming}}от{{else}}кому{{end}}
+      <b title="{{$cp}}">{{$p.Label $cp}}</b> <code class="addr" data-copy="{{$cp}}" title="копировать">{{$cp}}</code>
+      {{with $p.Lookalike $cp}}<div class="warn">⚠ Адрес похож на «{{.}}», но это другой адрес. Возможно address poisoning: не копируй его из истории.</div>{{end}}
+      · {{if $t.Incoming}}на{{else}}с{{end}} <b>{{if $t.Incoming}}{{$p.Label $t.To}}{{else}}{{$p.Label $t.From}}{{end}}</b>
+    </div>
+    <div class="cats">
+      {{range $i, $c := $p.Categories}}
+      <button class="cat" hx-post="/transfers/{{$t.ID}}/category?from=inbox&amp;category={{$c}}"
+        hx-include="#rule{{$t.ID}}" hx-target="#t{{$t.ID}}" hx-swap="outerHTML">{{if lt $i 9}}<kbd>{{add1 $i}}</kbd> {{end}}{{$c}}</button>
+      {{end}}
+      <label class="rule" title="Применять эту категорию ко всем {{if $t.Incoming}}входящим от{{else}}исходящим к{{end}} этому адресу">
+        <input type="checkbox" id="rule{{$t.ID}}" name="rule" value="1"> всегда так для этого адреса</label>
+    </div>
+    <details class="more-actions">
+      <summary>Ещё</summary>
+      <form class="row" hx-post="/counterparty" hx-target="#t{{$t.ID}}" hx-swap="outerHTML">
+        <input type="hidden" name="address" value="{{$cp}}">
+        <span>Адрес контрагента:</span>
+        <input name="name" placeholder="имя, напр. Binance" value="{{with index $p.Book $cp}}{{.Name}}{{end}}">
+        <select name="kind">{{range kinds}}<option value="{{.}}" {{if eq . "external"}}selected{{end}}>{{kindLabel .}}</option>{{end}}</select>
+        <button>Сохранить в кошельки</button>
+      </form>
+      <div class="row">
+        <input class="comment" name="comment" placeholder="комментарий" value="{{$t.Comment}}"
+          hx-post="/transfers/{{$t.ID}}/comment" hx-trigger="change" hx-swap="none">
+        <button class="danger" hx-post="/assets/{{$t.Asset.ID}}/spam" hx-vals='{"from": "inbox"}'
+          hx-target="#t{{$t.ID}}" hx-swap="outerHTML" title="Скрыть все трансферы этого токена">{{$t.Asset.Symbol}} это спам-токен</button>
+      </div>
+    </details>
+  </div>
+</div>
+{{end}}

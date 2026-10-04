@@ -1,0 +1,38 @@
+{{define "content"}}
+{{with .Data}}
+<form class="card" method="post" action="/wallets">
+  <label>Адреса, по одному на строке. Можно так: <code>адрес, имя, тип</code> (тип: мой / биржа / чужой).</label>
+  <textarea name="lines" rows="5" placeholder="0x1234…abcd, Ledger, мой
+TXyz…, Binance депозит, биржа" required autofocus></textarea>
+  <div class="row">
+    <span>По умолчанию:</span>
+    <select name="kind">{{range kinds}}<option value="{{.}}">{{kindLabel .}}</option>{{end}}</select>
+    <input name="name" placeholder="имя (если не указано в строке)">
+    <button class="primary">Добавить</button>
+  </div>
+  <p class="muted">Поддерживаются EVM (<code>0x…</code>: {{range $i, $c := $.Chains}}{{if eq $c.Family "evm"}}{{$c.Name}} {{end}}{{end}}) и Tron (<code>T…</code>).
+    Только публичные адреса, никаких seed-фраз и ключей.</p>
+</form>
+{{if .Added}}<p class="ok">Добавлено: {{.Added}}. Нажми «Синк», чтобы загрузить историю.</p>{{end}}
+{{range .Errors}}<p class="error">{{.}}</p>{{end}}
+
+{{if .Addresses}}
+<table class="table">
+  <thead><tr><th>Цвет</th><th>Имя</th><th>Тип</th><th>Адрес</th><th>Сеть</th><th></th></tr></thead>
+  <tbody>
+  {{range .Addresses}}
+  <tr hx-post="/wallets/{{.ID}}" hx-trigger="change" hx-include="this" hx-swap="none">
+    <td><input type="color" name="color" value="{{if .Color}}{{.Color}}{{else}}#888888{{end}}"></td>
+    <td><input name="name" value="{{.Name}}" placeholder="без имени"></td>
+    <td><select name="kind" class="kind-{{.Kind}}">{{$k := .Kind}}{{range kinds}}<option value="{{.}}" {{if eq . $k}}selected{{end}}>{{kindLabel .}}</option>{{end}}</select></td>
+    <td><code class="addr" data-copy="{{.Address}}">{{.Address}}</code></td>
+    <td class="muted">{{if eq .Family "evm"}}EVM{{else}}Tron{{end}}</td>
+    <td><button class="link danger" hx-post="/wallets/{{.ID}}/delete" hx-confirm="Удалить адрес {{.Label}}?" hx-target="closest tr" hx-swap="outerHTML">удалить</button></td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+<p class="muted">Изменения сохраняются сразу. Одинаковое имя у нескольких адресов = одна сущность (например, все адреса Binance).</p>
+{{end}}
+{{end}}
+{{end}}

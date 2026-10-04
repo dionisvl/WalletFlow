@@ -1,0 +1,35 @@
+{{define "layout"}}<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · WalletFlow</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/htmx.min.js"></script>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand">WalletFlow</div>
+  <nav>
+    <a href="/inbox" class="{{if eq .Active "inbox"}}active{{end}}">Inbox
+      <span class="badge" hx-get="/inbox/count" hx-trigger="inboxChanged from:body">{{if .InboxCount}}{{.InboxCount}}{{end}}</span></a>
+    <a href="/transactions" class="{{if eq .Active "transactions"}}active{{end}}">Транзакции</a>
+    <a href="/flows" class="{{if eq .Active "flows"}}active{{end}}">Потоки</a>
+    <a href="/balances" class="{{if eq .Active "balances"}}active{{end}}">Балансы</a>
+    <a href="/graph" class="{{if eq .Active "graph"}}active{{end}}">Граф</a>
+    <a href="/wallets" class="{{if eq .Active "wallets"}}active{{end}}">Кошельки</a>
+    <a href="/export" class="{{if eq .Active "export"}}active{{end}}">Экспорт</a>
+    <a href="/settings" class="{{if eq .Active "settings"}}active{{end}}">Настройки</a>
+  </nav>
+  <div class="sync">
+    <button class="primary" hx-post="/sync" hx-target="#sync-status" hx-swap="outerHTML">Синк</button>
+    {{template "sync-status" .}}
+  </div>
+</aside>
+<main>
+  <h1>{{.Title}}</h1>
+  {{template "content" .}}
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>{{end}}

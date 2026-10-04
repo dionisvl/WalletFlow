@@ -1,5 +1,7 @@
 /walletflow
+/bin/
 *.db
 *.db-wal
 *.db-shm
+.env
 .idea/

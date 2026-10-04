@@ -1,0 +1,48 @@
+{{define "content"}}{{$p := .}}
+{{if not $p.Book}}
+<div class="empty">Сначала добавь кошельки на странице <a href="/wallets">Кошельки</a> и нажми «Синк».</div>
+{{else}}
+<form class="filters" id="graph-form">
+  <label>с <input type="date" name="from" value="{{$p.Q "from"}}"></label>
+  <label>по <input type="date" name="to" value="{{$p.Q "to"}}"></label>
+  <select name="asset"><option value="">все активы</option>{{with .Data}}{{range .Assets}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) ($p.Q "asset")}}selected{{end}}>{{.Symbol}} · {{chainName .Chain}}</option>{{end}}{{end}}</select>
+  <label title="Адреса с одинаковым именем показываются одним узлом"><input type="checkbox" name="group" value="1" checked> группировать по имени</label>
+  <span class="sep"></span>
+  <label><input type="checkbox" name="unknown_in" value="1"> входящие от неизвестных</label>
+  <label><input type="checkbox" name="unknown_out" value="1"> исходящие к неизвестным</label>
+  <label>за <select name="days">
+    <option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option><option value="365">год</option>
+  </select></label>
+  <label title="Остальные сворачиваются в один узел">топ <input type="number" name="max" value="25" min="1" max="200" style="width:4.5em"></label>
+  <span class="sep"></span>
+  <select id="graph-layout" title="Раскладка">
+    <option value="cose">силовая</option>
+    <option value="concentric">кольца: мои в центре</option>
+    <option value="breadthfirst">потоком слева направо</option>
+  </select>
+  <button type="button" id="graph-relayout">Разложить заново</button>
+  <button type="button" id="graph-png">PNG</button>
+</form>
+<p class="muted" id="graph-summary"></p>
+<div class="graph-wrap">
+  <div id="graph" class="chart"></div>
+  <aside id="graph-panel" class="card graph-panel">
+    <p class="muted">Кликни узел или связь, чтобы увидеть детали. Узлы можно перетаскивать, раскладка запоминается.</p>
+  </aside>
+</div>
+<div class="legend">
+  <span><i class="dot mine"></i>мой</span>
+  <span><i class="dot exchange"></i>биржа</span>
+  <span><i class="dot external"></i>чужой (в адресной книге)</span>
+  <span><i class="dot unknown"></i>неизвестный</span>
+  <span class="sep"></span>
+  <span><i class="line internal"></i>внутренний</span>
+  <span><i class="line cex"></i>с биржей</span>
+  <span><i class="line inflow"></i>входящий</span>
+  <span><i class="line outflow"></i>исходящий</span>
+  <span class="muted">толщина = число переводов</span>
+</div>
+<script src="/static/cytoscape.min.js"></script>
+<script src="/static/graph.js"></script>
+{{end}}
+{{end}}
