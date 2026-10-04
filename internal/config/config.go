@@ -4,20 +4,23 @@ package config
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
 // Config is everything the app takes from the environment.
 type Config struct {
-	Addr         string   // WALLETFLOW_ADDR
-	DBPath       string   // WALLETFLOW_DB
-	EtherscanKey string   // ETHERSCAN_API_KEY
-	TronGridKey  string   // TRONGRID_API_KEY
-	IgnoreChains []string // IGNORE_CHAINS, comma separated chain keys
-	EnvFile      string   // the .env that was loaded, if any
+	Addr          string   // WALLETFLOW_ADDR
+	DBPath        string   // WALLETFLOW_DB
+	EtherscanKey  string   // ETHERSCAN_API_KEY
+	TronGridKey   string   // TRONGRID_API_KEY
+	IgnoreChains  []string // IGNORE_CHAINS, comma separated chain keys
+	MaxPerAddress int      // MAX_TRANSFERS_PER_ADDRESS, -1 = not set
+	EnvFile       string   // the .env that was loaded, if any
 }
 
 // Load reads the first existing .env from paths into the process environment
@@ -39,6 +42,14 @@ func Load(paths ...string) (Config, error) {
 	c.DBPath = os.Getenv("WALLETFLOW_DB")
 	c.EtherscanKey = os.Getenv("ETHERSCAN_API_KEY")
 	c.TronGridKey = os.Getenv("TRONGRID_API_KEY")
+	c.MaxPerAddress = -1
+	if v := strings.TrimSpace(os.Getenv("MAX_TRANSFERS_PER_ADDRESS")); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			return c, fmt.Errorf("MAX_TRANSFERS_PER_ADDRESS: want a number >= 0, got %q", v)
+		}
+		c.MaxPerAddress = n
+	}
 	for k := range strings.SplitSeq(os.Getenv("IGNORE_CHAINS"), ",") {
 		if k = strings.ToLower(strings.TrimSpace(k)); k != "" {
 			c.IgnoreChains = append(c.IgnoreChains, k)

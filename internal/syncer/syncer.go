@@ -61,12 +61,15 @@ type Syncer struct {
 	blocked map[string]bool // chains the API plan does not allow, per run
 
 	etherscanURL, tronURL string // empty = real APIs; tests point them at fakes
+
+	// MaxPerAddress stops syncing an address once it has this many transfers; 0 = no limit.
+	MaxPerAddress int
 }
 
 // New creates a syncer over the available chains.
 func New(st *store.Store, chains []chain.Chain, keys Keys, enabled Enabled) *Syncer {
 	return &Syncer{store: st, chains: chains, keys: keys, enabled: enabled,
-		http: &http.Client{Timeout: 60 * time.Second}}
+		http: &http.Client{Timeout: 60 * time.Second}, MaxPerAddress: DefaultMaxPerAddress}
 }
 
 func (s *Syncer) Status() Status {
@@ -138,8 +141,12 @@ func (s *Syncer) Stop() {
 // errRemoved stops a job whose address was removed or is no longer synced.
 var errRemoved = errors.New("address removed from own wallets")
 
-// bigHistory is the transfer count after which an "own" address looks like an exchange.
-const bigHistory = 5000
+// errTooBig stops a job whose address has more transfers than the limit.
+var errTooBig = errors.New("too many transfers")
+
+// DefaultMaxPerAddress is the default cap on stored transfers per synced address.
+// Personal wallets stay far below; exchange and service wallets go far above.
+const DefaultMaxPerAddress = 10_000
 
 type job struct {
 	chain chain.Chain
@@ -220,20 +227,32 @@ func (s *Syncer) runJob(ctx context.Context, j job, ec *evm.Client, tc *tron.Cli
 	}
 	progress := func(msg string) { s.update(func(st *Status) { st.setActive(key, msg) }) }
 	progress(key + ": старт")
-	// Check before each page, so deleting an address mid-sync stops its download.
+	have, err := s.store.CountTransfers(ctx, store.Filter{Addresses: []string{j.addr}})
+	if err != nil {
+		s.fail(fmt.Errorf("%s: %w", key, err))
+		return
+	}
+	if s.MaxPerAddress > 0 && have >= s.MaxPerAddress {
+		s.failTooBig(key, have)
+		return
+	}
+	// Checked before each page: deleting an address mid-sync stops its download,
+	// and an address that grows past the limit stops too.
 	emit := func(ctx context.Context, ts []ledger.Transfer) (int, error) {
 		if ok, err := s.store.IsSynced(ctx, j.addr); err != nil || !ok {
 			return 0, cmp.Or(err, errRemoved)
 		}
+		if s.MaxPerAddress > 0 && have >= s.MaxPerAddress {
+			return 0, errTooBig
+		}
 		n, err := s.store.InsertTransfers(ctx, ts)
+		have += n
 		s.update(func(st *Status) { st.Added += n })
 		return n, err
 	}
-	var n int
-	var err error
 	switch j.chain.Family {
 	case address.EVM:
-		n, err = ec.Pull(ctx, j.chain, j.addr, s.store, emit, progress)
+		_, err = ec.Pull(ctx, j.chain, j.addr, s.store, emit, progress)
 		if errors.Is(err, evm.ErrNoChainAccess) {
 			if s.block(j.chain.Key) {
 				s.fail(fmt.Errorf("%s: недоступна на бесплатном тарифе Etherscan. Добавь %q в IGNORE_CHAINS в .env или сними галочку в Настройках", j.chain.Name, j.chain.Key))
@@ -241,17 +260,24 @@ func (s *Syncer) runJob(ctx context.Context, j job, ec *evm.Client, tc *tron.Cli
 			return
 		}
 	case address.Tron:
-		n, err = tc.Pull(ctx, j.addr, s.store, emit, progress)
+		_, err = tc.Pull(ctx, j.addr, s.store, emit, progress)
 	}
-	if errors.Is(err, errRemoved) {
+	switch {
+	case errors.Is(err, errRemoved):
 		return
-	}
-	if n > bigHistory && j.kind == ledger.KindMine {
-		s.fail(fmt.Errorf("%s: загружено %d трансферов. Если это адрес биржи, смени тип на «Биржа»: лишние трансферы удалятся", key, n))
+	case errors.Is(err, errTooBig):
+		s.failTooBig(key, have)
+		return
 	}
 	if err != nil && ctx.Err() == nil {
 		s.fail(fmt.Errorf("%s: %w", key, err))
 	}
+}
+
+func (s *Syncer) failTooBig(key string, n int) {
+	s.fail(fmt.Errorf("%s: синк остановлен на %d трансферах, похоже на биржу или сервис. "+
+		"Если это биржа, смени тип на «Биржа»: её история не нужна, лишнее удалится. "+
+		"Лимит: MAX_TRANSFERS_PER_ADDRESS в .env (0 = без лимита)", key, n))
 }
 
 // block marks a chain unavailable on the API plan; it reports whether it was newly blocked.

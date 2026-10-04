@@ -38,6 +38,9 @@ type Server struct {
 func New(ctx context.Context, st *store.Store, cfg config.Config) (*Server, error) {
 	s := &Server{ctx: ctx, store: st, cfg: cfg, chains: chain.All(cfg.IgnoreChains...), pages: map[string]*template.Template{}}
 	s.sync = syncer.New(st, s.chains, s.apiKeys, s.enabledChains)
+	if cfg.MaxPerAddress >= 0 {
+		s.sync.MaxPerAddress = cfg.MaxPerAddress
+	}
 	tfs, err := fs.Sub(assetsFS, "assets/templates")
 	if err != nil {
 		return nil, err

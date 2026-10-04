@@ -78,3 +78,36 @@ func TestSmallWalletDoesNotWaitForBig(t *testing.T) {
 	}
 	t.Fatal("small wallet was not synced while the big one was loading")
 }
+
+func TestStopsAtLimit(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	st.UpsertAddress(ctx, ledger.Address{Family: "tron", Address: big, Kind: ledger.KindWatch})
+	srv := fakeTron(t)
+	defer srv.Close()
+
+	tronChain, _ := chain.ByKey("tron")
+	s := New(st, []chain.Chain{tronChain},
+		func(context.Context) (string, string) { return "", "key" },
+		func(context.Context) map[string]bool { return map[string]bool{"tron": true} })
+	s.tronURL = srv.URL
+	s.MaxPerAddress = 5
+	s.Start(ctx)
+
+	deadline := time.Now().Add(10 * time.Second)
+	for s.Status().Running {
+		if time.Now().After(deadline) {
+			s.Stop()
+			t.Fatal("sync did not stop at the limit")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	errs := s.Status().Errors
+	if len(errs) != 1 || !strings.Contains(errs[0], "похоже на биржу") {
+		t.Errorf("errors = %q", errs)
+	}
+}
