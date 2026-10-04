@@ -105,3 +105,45 @@ func TestClassifyRulesInbox(t *testing.T) {
 		t.Errorf("mine→shop = %d, want 2", n)
 	}
 }
+
+func TestPurgeOrphans(t *testing.T) {
+	ctx := context.Background()
+	s := open(t)
+	const mine, cex, x = "TMine", "TCex", "TX"
+	s.UpsertAddress(ctx, ledger.Address{Family: "tron", Address: mine, Kind: ledger.KindMine})
+	s.UpsertAddress(ctx, ledger.Address{Family: "tron", Address: cex, Kind: ledger.KindMine}) // the mistake
+	usdt := ledger.Asset{Chain: "tron", Contract: "T1", Symbol: "USDT", Decimals: 6}
+	s.InsertTransfers(ctx, []ledger.Transfer{
+		{UID: "1", Chain: "tron", TxHash: "a", From: cex, To: mine, Asset: usdt, AmountRaw: "1", FeeRaw: "0"},
+		{UID: "2", Chain: "tron", TxHash: "b", From: x, To: cex, Asset: usdt, AmountRaw: "1", FeeRaw: "0"},
+		{UID: "3", Chain: "tron", TxHash: "c", From: cex, To: x, Asset: usdt, AmountRaw: "1", FeeRaw: "0"},
+		{UID: "4", Chain: "tron", TxHash: "d", From: x, To: cex, Asset: usdt, AmountRaw: "1", FeeRaw: "0"},
+	})
+	s.SetCursor(ctx, "tron", cex, "trc20", 123)
+	all, _ := s.Transfers(ctx, Filter{})
+	for _, tr := range all {
+		if tr.TxHash == "d" {
+			s.SetComment(ctx, tr.ID, "keep me")
+		}
+	}
+
+	// Fix the mistake: the exchange is not mine.
+	s.UpsertAddress(ctx, ledger.Address{Family: "tron", Address: cex, Kind: ledger.KindExchange})
+	if err := s.RefreshBook(ctx); err != nil {
+		t.Fatal(err)
+	}
+	left, _ := s.Transfers(ctx, Filter{})
+	hashes := map[string]bool{}
+	for _, tr := range left {
+		hashes[tr.TxHash] = true
+	}
+	if !hashes["a"] || hashes["b"] || hashes["c"] || !hashes["d"] {
+		t.Errorf("left after purge: %v", hashes)
+	}
+	if c := s.Cursor(ctx, "tron", cex, "trc20"); c != 0 {
+		t.Errorf("cursor kept: %d", c)
+	}
+	if n, _ := s.CountTransfers(ctx, Filter{Inbox: true}); n != 0 {
+		t.Errorf("inbox = %d, want 0 (a is a withdrawal, d is exchange↔external)", n)
+	}
+}

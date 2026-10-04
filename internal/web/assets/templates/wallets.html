@@ -27,7 +27,7 @@ TXyz…, Binance депозит, биржа" required autofocus></textarea>
     <td><select name="kind" class="kind-{{.Kind}}">{{$k := .Kind}}{{range kinds}}<option value="{{.}}" {{if eq . $k}}selected{{end}}>{{kindLabel .}}</option>{{end}}</select></td>
     <td><code class="addr" data-copy="{{.Address}}">{{.Address}}</code></td>
     <td class="muted">{{if eq .Family "evm"}}EVM{{else}}Tron{{end}}</td>
-    <td><button class="link danger" hx-post="/wallets/{{.ID}}/delete" hx-confirm="Удалить адрес {{.Label}}?" hx-target="closest tr" hx-swap="outerHTML">удалить</button></td>
+    <td><button class="link danger" hx-post="/wallets/{{.ID}}/delete" hx-confirm="Удалить адрес {{.Label}}? Его неразмеченные трансферы тоже удалятся (вернуть можно повторным синком)." hx-target="closest tr" hx-swap="outerHTML">удалить</button></td>
   </tr>
   {{end}}
   </tbody>

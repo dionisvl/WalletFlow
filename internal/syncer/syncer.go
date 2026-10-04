@@ -2,6 +2,7 @@
 package syncer
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -98,7 +99,7 @@ func (s *Syncer) Start(ctx context.Context) bool {
 		s.run(ctx)
 		// Classify what we have, even when stopped.
 		s.update(func(st *Status) { st.Message = "Классификация…" })
-		if err := s.store.Reclassify(context.WithoutCancel(ctx)); err != nil {
+		if err := s.store.RefreshBook(context.WithoutCancel(ctx)); err != nil {
 			s.fail(err)
 		}
 	}()
@@ -114,6 +115,12 @@ func (s *Syncer) Stop() {
 		s.status.Message = "Останавливаю…"
 	}
 }
+
+// errRemoved stops a job whose address was removed or is no longer "mine".
+var errRemoved = errors.New("address removed from own wallets")
+
+// bigHistory is the transfer count after which an "own" address looks like an exchange.
+const bigHistory = 5000
 
 type job struct {
 	chain chain.Chain
@@ -160,19 +167,32 @@ func (s *Syncer) run(ctx context.Context) {
 			continue
 		}
 		progress := func(msg string) { s.update(func(st *Status) { st.Message = msg }) }
+		// Check before each page, so deleting an address mid-sync stops its download.
+		emit := func(ctx context.Context, ts []ledger.Transfer) (int, error) {
+			if mine, err := s.store.IsMine(ctx, j.addr); err != nil || !mine {
+				return 0, cmp.Or(err, errRemoved)
+			}
+			return s.store.InsertTransfers(ctx, ts)
+		}
 		var n int
 		var err error
 		switch j.chain.Family {
 		case address.EVM:
-			n, err = ec.Pull(ctx, j.chain, j.addr, s.store, s.store.InsertTransfers, progress)
+			n, err = ec.Pull(ctx, j.chain, j.addr, s.store, emit, progress)
 			if errors.Is(err, evm.ErrNoChainAccess) {
 				blocked[j.chain.Key] = true
 				err = fmt.Errorf("недоступна на бесплатном тарифе Etherscan. Добавь %q в IGNORE_CHAINS в .env или сними галочку в Настройках", j.chain.Key)
 			}
 		case address.Tron:
-			n, err = tc.Pull(ctx, j.addr, s.store, s.store.InsertTransfers, progress)
+			n, err = tc.Pull(ctx, j.addr, s.store, emit, progress)
 		}
 		s.update(func(st *Status) { st.Added += n })
+		if errors.Is(err, errRemoved) {
+			continue
+		}
+		if n > bigHistory {
+			s.fail(fmt.Errorf("%s %s: загружено %d трансферов. Если это адрес биржи, смени тип на «Биржа»: лишние трансферы удалятся", j.chain.Name, address.Short(j.addr), n))
+		}
 		if err != nil && ctx.Err() == nil {
 			if blocked[j.chain.Key] {
 				s.fail(fmt.Errorf("%s: %w", j.chain.Name, err))

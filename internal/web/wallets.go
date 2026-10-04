@@ -64,7 +64,7 @@ func (s *Server) walletsAdd(w http.ResponseWriter, r *http.Request) {
 		d.Added++
 	}
 	if d.Added > 0 {
-		if err := s.store.Reclassify(ctx); err != nil {
+		if err := s.store.RefreshBook(ctx); err != nil {
 			serverError(w, err)
 			return
 		}
@@ -83,7 +83,7 @@ func (s *Server) walletUpdate(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	if err := s.store.Reclassify(r.Context()); err != nil {
+	if err := s.store.RefreshBook(r.Context()); err != nil {
 		serverError(w, err)
 		return
 	}
@@ -96,7 +96,7 @@ func (s *Server) walletDelete(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	if err := s.store.Reclassify(r.Context()); err != nil {
+	if err := s.store.RefreshBook(r.Context()); err != nil {
 		serverError(w, err)
 		return
 	}
@@ -120,7 +120,7 @@ func (s *Server) markCounterparty(w http.ResponseWriter, r *http.Request) {
 		serverError(w, err)
 		return
 	}
-	if err := s.store.Reclassify(ctx); err != nil {
+	if err := s.store.RefreshBook(ctx); err != nil {
 		serverError(w, err)
 		return
 	}

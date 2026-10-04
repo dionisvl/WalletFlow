@@ -82,3 +82,10 @@ func (s *Store) SetAssetSpam(ctx context.Context, id int64, spam bool) error {
 	_, err := s.db.ExecContext(ctx, "UPDATE assets SET is_spam = ? WHERE id = ?", spam, id)
 	return err
 }
+
+// IsMine reports whether addr is in the book as an own address.
+func (s *Store) IsMine(ctx context.Context, addr string) (bool, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM addresses WHERE address = ? AND kind = 'mine'", addr).Scan(&n)
+	return n > 0, err
+}

@@ -54,6 +54,11 @@ func run() error {
 		return err
 	}
 	defer st.Close()
+	if n, err := st.PurgeOrphans(context.Background()); err != nil {
+		return err
+	} else if n > 0 {
+		log.Printf("removed %d transfers of addresses that are no longer yours", n)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
