@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 func TestLocalOnly(t *testing.T) {

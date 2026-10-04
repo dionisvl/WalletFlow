@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 func (s *Store) Addresses(ctx context.Context) ([]ledger.Address, error) {

@@ -4,7 +4,7 @@ document.addEventListener('click', (e) => {
   if (!el) return;
   navigator.clipboard?.writeText(el.dataset.copy);
   const old = el.textContent;
-  el.textContent = 'скопировано';
+  el.textContent = t('copied');
   setTimeout(() => { el.textContent = old; }, 700);
 });
 

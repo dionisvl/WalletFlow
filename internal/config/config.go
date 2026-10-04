@@ -21,6 +21,7 @@ type Config struct {
 	IgnoreChains  []string // IGNORE_CHAINS, comma separated chain keys
 	MaxPerAddress int      // MAX_TRANSFERS_PER_ADDRESS, -1 = not set
 	EnvFile       string   // the .env that was loaded, if any
+	Demo          bool     // -demo: sample data, no sync
 }
 
 // Load reads the first existing .env from paths into the process environment

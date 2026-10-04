@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 // Limiter allows one request per interval. The zero value does not limit.

@@ -14,12 +14,12 @@
     inflow: colors.in, outflow: colors.out, unknown: colors.watch,
   };
   const classLabel = {
-    internal: 'Внутренний', cex_deposit: 'На биржу', cex_withdrawal: 'С биржи',
-    inflow: 'Входящий', outflow: 'Исходящий', unknown: 'Неизвестно',
+    internal: t('Internal'), cex_deposit: t('To exchange'), cex_withdrawal: t('From exchange'),
+    inflow: t('Incoming'), outflow: t('Outgoing'), unknown: t('Unknown'),
   };
   const kindLabel = {
-    mine: 'Мой', exchange: 'Биржа', external: 'Чужой', watch: 'Наблюдаемый',
-    unknown: 'Неизвестный адрес', shared: 'Общий контрагент: связан с несколькими кошельками', more: 'Свёрнутые адреса',
+    mine: t('Mine'), exchange: t('Exchange'), external: t('External'), watch: t('Watched'),
+    unknown: t('Unknown address'), shared: t('Shared counterparty: linked to several wallets'), more: t('Folded addresses'),
   };
   const fmt = (v) => Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 6 });
   const day = (ts) => new Date(ts * 1000).toISOString().slice(0, 10);
@@ -124,7 +124,8 @@
       return base + 22 * Math.sqrt(n.count / maxNode);
     };
     cy.elements().remove();
-    cy.add(nodes.map((n) => ({ group: 'nodes', data: { ...n, color: nodeColor(n), size: size(n) } })));
+    const label = (n) => (n.kind === 'more' ? `${t(n.label)} (${n.folded || 0})` : n.label);
+    cy.add(nodes.map((n) => ({ group: 'nodes', data: { ...n, label: label(n), color: nodeColor(n), size: size(n) } })));
     cy.add(edges.map((e) => ({ group: 'edges', data: {
       ...e, color: classColor[e.class] || colors.muted, w: 1.5 + 8 * Math.log1p(e.count) / Math.log1p(maxCount),
     } })));
@@ -155,12 +156,12 @@
     const unknownCount = nodes.filter((n) => n.kind === 'unknown').length;
     const sharedCount = nodes.filter((n) => n.kind === 'shared').length;
     document.getElementById('graph-summary').textContent =
-      `Узлов: ${nodes.length}, связей: ${edges.length}` +
-      (sharedCount ? `, общих контрагентов: ${sharedCount}` : '') +
-      (unknownCount ? `, неизвестных адресов: ${unknownCount}` : '') +
-      (g.hiddenUnknown ? ` (ещё ${g.hiddenUnknown} свёрнуто)` : '') +
-      (nodes.length && !edges.length ? '. Связей не найдено: включи «общие контрагенты» или расширь период.' : '');
-    if (!nodes.length) panel.innerHTML = '<p class="muted">Нет связей за выбранный период.</p>';
+      t('Nodes: %d, links: %d', nodes.length, edges.length) +
+      (sharedCount ? ', ' + t('shared counterparties: %d', sharedCount) : '') +
+      (unknownCount ? ', ' + t('unknown addresses: %d', unknownCount) : '') +
+      (g.hiddenUnknown ? ' ' + t('(%d more folded)', g.hiddenUnknown) : '') +
+      (nodes.length && !edges.length ? '. ' + t('No links found: turn on “shared counterparties” or widen the period.') : '');
+    if (!nodes.length) panel.innerHTML = `<p class="muted">${t('No links in this period.')}</p>`;
   }
 
   function txLink(params) {
@@ -179,13 +180,13 @@
     if (d.addresses && d.addresses.length) {
       html += '<ul>' + d.addresses.map((a) => `<li><code class="addr" data-copy="${esc(a)}">${esc(a)}</code></li>`).join('') + '</ul>';
     }
-    html += `<div>Связей: ${edges.length} · входящих переводов: ${inCount} · исходящих: ${outCount}</div>`;
-    if (d.ref) html += `<div class="row"><a class="button" href="${txLink({ wallet: d.ref })}">Транзакции</a></div>`;
+    html += `<div>${t('Links: %d · incoming transfers: %d · outgoing: %d', edges.length, inCount, outCount)}</div>`;
+    if (d.ref) html += `<div class="row"><a class="button" href="${txLink({ wallet: d.ref })}">${t('Transactions')}</a></div>`;
     if (d.kind === 'unknown' || d.kind === 'shared') {
       html += `<form class="row" id="graph-add">
-        <input name="name" placeholder="имя, напр. Bybit" required>
-        <select name="kind"><option value="external">Чужой</option><option value="exchange">Биржа</option><option value="watch">Наблюдаемый</option><option value="mine">Мой</option></select>
-        <button class="primary">В адресную книгу</button></form>`;
+        <input name="name" placeholder="${t('name, e.g. Bybit')}" required>
+        <select name="kind"><option value="external">${t('External')}</option><option value="exchange">${t('Exchange')}</option><option value="watch">${t('Watched')}</option><option value="mine">${t('Mine')}</option></select>
+        <button class="primary">${t('Add to the book')}</button></form>`;
     }
     panel.innerHTML = html;
     const addForm = document.getElementById('graph-add');
@@ -203,10 +204,10 @@
     const d = e.data();
     const src = e.source().data(), dst = e.target().data();
     let html = `<h3>${esc(src.label)} → ${esc(dst.label)}</h3>
-      <div class="muted">${classLabel[d.class] || d.class} · ${d.count} перевод(ов)</div>
+      <div class="muted">${classLabel[d.class] || d.class} · ${t('%d transfers', d.count)}</div>
       <div class="muted">${day(d.first)} … ${day(d.last)}</div><ul>` +
       (d.totals || []).map((t) => `<li><b>${fmt(t.amount)}</b> ${esc(t.symbol)} <span class="muted">${esc(t.chain)}</span></li>`).join('') + '</ul>';
-    if (src.ref && dst.ref) html += `<div class="row"><a class="button" href="${txLink({ src: src.ref, dst: dst.ref })}">Транзакции этой связи</a></div>`;
+    if (src.ref && dst.ref) html += `<div class="row"><a class="button" href="${txLink({ src: src.ref, dst: dst.ref })}">${t('Transactions of this link')}</a></div>`;
     panel.innerHTML = html;
   }
 

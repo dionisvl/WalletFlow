@@ -3,7 +3,7 @@ package report
 import (
 	"testing"
 
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 func TestBuildBalances(t *testing.T) {

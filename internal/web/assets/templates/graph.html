@@ -1,50 +1,50 @@
 {{define "content"}}{{$p := .}}
 {{if not $p.Book}}
-<div class="empty">Сначала добавь кошельки на странице <a href="/wallets">Кошельки</a> и нажми «Синк».</div>
+<div class="empty">{{t "Add your addresses on the"}} <a href="/wallets">{{t "Wallets"}}</a> {{t "page, then press Sync."}}</div>
 {{else}}
 <form class="filters" id="graph-form">
-  <label>с <input type="date" name="from" value="{{$p.Q "from"}}"></label>
-  <label>по <input type="date" name="to" value="{{$p.Q "to"}}"></label>
-  <select name="asset"><option value="">все активы</option>{{with .Data}}{{range .Assets}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) ($p.Q "asset")}}selected{{end}}>{{.Symbol}} · {{chainName .Chain}}</option>{{end}}{{end}}</select>
-  <label title="Адреса с одинаковым именем показываются одним узлом"><input type="checkbox" name="group" value="1" checked> группировать по имени</label>
+  <label>{{t "since"}} <input type="date" name="from" value="{{$p.Q "from"}}"></label>
+  <label>{{t "until"}} <input type="date" name="to" value="{{$p.Q "to"}}"></label>
+  <select name="asset"><option value="">{{t "all assets"}}</option>{{with .Data}}{{range .Assets}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) ($p.Q "asset")}}selected{{end}}>{{.Symbol}} · {{chainName .Chain}}</option>{{end}}{{end}}</select>
+  <label title="{{t "Addresses with the same name show as one node"}}"><input type="checkbox" name="group" value="1" checked> {{t "group by name"}}</label>
   <span class="sep"></span>
-  <label title="Адреса вне книги, связанные с двумя и более кошельками, за весь выбранный период. Так видно, как кошельки связаны через посредников"><input type="checkbox" name="common" value="1"> общие контрагенты</label>
-  <label><input type="checkbox" name="unknown_in" value="1"> входящие от неизвестных</label>
-  <label><input type="checkbox" name="unknown_out" value="1"> исходящие к неизвестным</label>
-  <label>за <select name="days">
-    <option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option><option value="365">год</option>
+  <label title="{{t "Outside addresses linked to two or more wallets over the whole period: shows how wallets connect through middlemen"}}"><input type="checkbox" name="common" value="1"> {{t "shared counterparties"}}</label>
+  <label><input type="checkbox" name="unknown_in" value="1"> {{t "incoming from unknown"}}</label>
+  <label><input type="checkbox" name="unknown_out" value="1"> {{t "outgoing to unknown"}}</label>
+  <label>{{t "for"}} <select name="days">
+    <option value="7">{{t "7 days"}}</option><option value="30" selected>{{t "30 days"}}</option><option value="90">{{t "90 days"}}</option><option value="365">{{t "a year"}}</option>
   </select></label>
-  <label title="Остальные сворачиваются в один узел">топ <input type="number" name="max" value="25" min="1" max="200" style="width:4.5em"></label>
+  <label title="{{t "The rest fold into one node"}}">{{t "top"}} <input type="number" name="max" value="25" min="1" max="200" style="width:4.5em"></label>
   <span class="sep"></span>
-  <select id="graph-layout" title="Раскладка">
-    <option value="cose">силовая</option>
-    <option value="concentric">кольца: мои в центре</option>
-    <option value="breadthfirst">потоком слева направо</option>
+  <select id="graph-layout" title="{{t "Layout"}}">
+    <option value="cose">{{t "force"}}</option>
+    <option value="concentric">{{t "rings: mine in the middle"}}</option>
+    <option value="breadthfirst">{{t "flow, left to right"}}</option>
   </select>
-  <button type="button" id="graph-relayout">Разложить заново</button>
+  <button type="button" id="graph-relayout">{{t "Re-layout"}}</button>
   <button type="button" id="graph-png">PNG</button>
 </form>
 <p class="muted" id="graph-summary"></p>
 <div class="graph-wrap">
   <div id="graph" class="chart"></div>
   <aside id="graph-panel" class="card graph-panel">
-    <p class="muted">Кликни узел или связь, чтобы увидеть детали. Узлы можно перетаскивать, раскладка запоминается.</p>
+    <p class="muted">{{t "Click a node or a link to see details. Drag nodes around; the layout is remembered."}}</p>
   </aside>
 </div>
 <div class="legend">
-  <span><i class="dot mine"></i>мой</span>
-  <span><i class="dot exchange"></i>биржа</span>
-  <span><i class="dot external"></i>чужой (в адресной книге)</span>
-  <span><i class="dot watch"></i>наблюдаемый</span>
-  <span><i class="dot shared"></i>общий контрагент</span>
-  <span><i class="dot unknown"></i>неизвестный</span>
+  <span><i class="dot mine"></i>{{t "mine"}}</span>
+  <span><i class="dot exchange"></i>{{t "exchange"}}</span>
+  <span><i class="dot external"></i>{{t "external (in the book)"}}</span>
+  <span><i class="dot watch"></i>{{t "watched"}}</span>
+  <span><i class="dot shared"></i>{{t "shared counterparty"}}</span>
+  <span><i class="dot unknown"></i>{{t "unknown"}}</span>
   <span class="sep"></span>
-  <span><i class="line internal"></i>внутренний</span>
-  <span><i class="line cex"></i>с биржей</span>
-  <span><i class="line inflow"></i>входящий</span>
-  <span><i class="line outflow"></i>исходящий</span>
-  <span><i class="line watchline"></i>вне твоего учёта</span>
-  <span class="muted">толщина = число переводов</span>
+  <span><i class="line internal"></i>{{t "internal"}}</span>
+  <span><i class="line cex"></i>{{t "with an exchange"}}</span>
+  <span><i class="line inflow"></i>{{t "incoming"}}</span>
+  <span><i class="line outflow"></i>{{t "outgoing"}}</span>
+  <span><i class="line watchline"></i>{{t "outside your ledger"}}</span>
+  <span class="muted">{{t "width = number of transfers"}}</span>
 </div>
 <script src="/static/cytoscape.min.js"></script>
 <script src="/static/graph.js"></script>

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"walletflow/internal/config"
-	"walletflow/internal/ledger"
-	"walletflow/internal/report"
-	"walletflow/internal/store"
+	"github.com/dionisvl/walletflow/internal/config"
+	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/report"
+	"github.com/dionisvl/walletflow/internal/store"
 )
 
 func testServer(t *testing.T) (*Server, http.Handler) {
@@ -115,7 +115,7 @@ func TestWalletsAddExportRoundTrip(t *testing.T) {
 	s.sync.Stop()
 
 	exp := get(t, h, "/wallets/export").Body.String()
-	for _, want := range []string{"TAiK6ijSGs6TPNavfFK1W86iKeZf7otdAG, Suspect, наблюдаемый", "TQrY8tryqsYVCYS3MFbtffiPp2ccyn4STm, Main, мой"} {
+	for _, want := range []string{"TAiK6ijSGs6TPNavfFK1W86iKeZf7otdAG, Suspect, watch", "TQrY8tryqsYVCYS3MFbtffiPp2ccyn4STm, Main, mine"} {
 		if !strings.Contains(exp, want) {
 			t.Errorf("export misses %q:\n%s", want, exp)
 		}

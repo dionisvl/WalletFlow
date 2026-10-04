@@ -14,11 +14,11 @@
     if (!res.ok) { el.textContent = await res.text(); return; }
     const d = await res.json();
     document.getElementById('flows-summary').textContent =
-      `Пришло: ${fmt(d.in)} ${d.symbol || ''} · Ушло: ${fmt(d.out)} ${d.symbol || ''}`;
-    const labels = Object.fromEntries((d.nodes || []).map((n) => [n.name, n.label]));
+      t('In: %s · Out: %s', `${fmt(d.in)} ${d.symbol || ''}`, `${fmt(d.out)} ${d.symbol || ''}`);
+    const labels = Object.fromEntries((d.nodes || []).map((n) => [n.name, t(n.label)]));
     chart.clear();
     if (!d.links || !d.links.length) {
-      chart.setOption({ title: { text: 'Нет потоков за период', left: 'center', top: 'middle', textStyle: { color: '#888' } } });
+      chart.setOption({ title: { text: t('No flows in this period'), left: 'center', top: 'middle', textStyle: { color: '#888' } } });
       return;
     }
     chart.setOption({
@@ -27,7 +27,7 @@
       tooltip: {
         trigger: 'item',
         formatter: (p) => p.dataType === 'edge'
-          ? `${labels[p.data.source]} → ${labels[p.data.target]}<br>${fmt(p.data.value)} ${d.symbol} · ${p.data.count} шт.`
+          ? `${labels[p.data.source]} → ${labels[p.data.target]}<br>${fmt(p.data.value)} ${d.symbol} · ${t('%d transfers', p.data.count)}`
           : `${labels[p.name]}: ${fmt(p.value)} ${d.symbol}`,
       },
       series: [{

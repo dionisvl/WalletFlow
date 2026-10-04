@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 func open(t *testing.T) *Store {

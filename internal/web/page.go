@@ -7,10 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"walletflow/internal/address"
-	"walletflow/internal/chain"
-	"walletflow/internal/ledger"
-	"walletflow/internal/syncer"
+	"github.com/dionisvl/walletflow/internal/address"
+	"github.com/dionisvl/walletflow/internal/chain"
+	"github.com/dionisvl/walletflow/internal/i18n"
+	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/syncer"
 )
 
 // Page is the data every template gets; page specific data is in Data.
@@ -24,6 +25,10 @@ type Page struct {
 	Book       ledger.Book
 	Data       any
 	Query      url.Values
+	Lang       i18n.Lang
+	Langs      []i18n.Lang
+	JSDict     map[string]string // translations for the browser scripts
+	Demo       bool
 }
 
 func (p Page) Label(addr string) string { return p.Book.Label(addr) }
@@ -80,18 +85,20 @@ type rowData struct {
 	T ledger.Transfer
 }
 
-var funcs = template.FuncMap{
-	"short":     address.Short,
-	"explorer":  chain.TxURL,
-	"chainName": chain.Name,
-	"kindLabel": func(k ledger.Kind) string { return k.Label() },
-	"classLabel": func(c ledger.Class) string {
-		return c.Label()
-	},
-	"date":    func(t time.Time) string { return t.Format("2006-01-02 15:04") },
-	"add1":    func(i int) int { return i + 1 },
-	"kinds":   func() []ledger.Kind { return ledger.Kinds },
-	"classes": func() []ledger.Class { return ledger.Classes },
-	"inList":  func(s string, list []string) bool { return slices.Contains(list, s) },
-	"pair":    func(p Page, t ledger.Transfer) rowData { return rowData{p, t} },
+// funcsFor returns template functions with text translated to l.
+func funcsFor(l i18n.Lang) template.FuncMap {
+	return template.FuncMap{
+		"t":          l.T,
+		"short":      address.Short,
+		"explorer":   chain.TxURL,
+		"chainName":  chain.Name,
+		"kindLabel":  func(k ledger.Kind) string { return l.T(k.Label()) },
+		"classLabel": func(c ledger.Class) string { return l.T(c.Label()) },
+		"date":       func(t time.Time) string { return t.Format("2006-01-02 15:04") },
+		"add1":       func(i int) int { return i + 1 },
+		"kinds":      func() []ledger.Kind { return ledger.Kinds },
+		"classes":    func() []ledger.Class { return ledger.Classes },
+		"inList":     func(s string, list []string) bool { return slices.Contains(list, s) },
+		"pair":       func(p Page, t ledger.Transfer) rowData { return rowData{p, t} },
+	}
 }

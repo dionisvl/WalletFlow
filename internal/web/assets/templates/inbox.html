@@ -1,6 +1,6 @@
 {{define "content"}}
 {{if not .Book}}
-<div class="empty">Сначала добавь свои адреса на странице <a href="/wallets">Кошельки</a>, затем нажми «Синк».</div>
+<div class="empty">{{t "Add your addresses on the"}} <a href="/wallets">{{t "Wallets"}}</a> {{t "page, then press Sync."}}</div>
 {{else}}
 {{template "inbox-list" .}}
 {{end}}

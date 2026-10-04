@@ -14,10 +14,11 @@ import (
 	"strconv"
 	"strings"
 
-	"walletflow/internal/chain"
-	"walletflow/internal/config"
-	"walletflow/internal/store"
-	"walletflow/internal/syncer"
+	"github.com/dionisvl/walletflow/internal/chain"
+	"github.com/dionisvl/walletflow/internal/config"
+	"github.com/dionisvl/walletflow/internal/i18n"
+	"github.com/dionisvl/walletflow/internal/store"
+	"github.com/dionisvl/walletflow/internal/syncer"
 )
 
 //go:embed assets
@@ -30,13 +31,14 @@ type Server struct {
 	sync   *syncer.Syncer
 	cfg    config.Config
 	chains []chain.Chain
-	pages  map[string]*template.Template
-	parts  *template.Template
+	pages  map[i18n.Lang]map[string]*template.Template
+	parts  map[i18n.Lang]*template.Template
 }
 
 // New builds the server. ctx bounds background work such as syncs.
 func New(ctx context.Context, st *store.Store, cfg config.Config) (*Server, error) {
-	s := &Server{ctx: ctx, store: st, cfg: cfg, chains: chain.All(cfg.IgnoreChains...), pages: map[string]*template.Template{}}
+	s := &Server{ctx: ctx, store: st, cfg: cfg, chains: chain.All(cfg.IgnoreChains...),
+		pages: map[i18n.Lang]map[string]*template.Template{}, parts: map[i18n.Lang]*template.Template{}}
 	s.sync = syncer.New(st, s.chains, s.apiKeys, s.enabledChains)
 	if cfg.MaxPerAddress >= 0 {
 		s.sync.MaxPerAddress = cfg.MaxPerAddress
@@ -45,16 +47,20 @@ func New(ctx context.Context, st *store.Store, cfg config.Config) (*Server, erro
 	if err != nil {
 		return nil, err
 	}
-	s.parts, err = template.New("").Funcs(funcs).ParseFS(tfs, "partials.html")
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range []string{"wallets", "inbox", "transactions", "flows", "balances", "graph", "export", "settings"} {
-		t, err := template.New("").Funcs(funcs).ParseFS(tfs, "layout.html", "partials.html", p+".html")
-		if err != nil {
-			return nil, fmt.Errorf("template %s: %w", p, err)
+	// Templates are parsed once per language with that language's "t".
+	for _, lang := range i18n.Langs {
+		fm := funcsFor(lang)
+		if s.parts[lang], err = template.New("").Funcs(fm).ParseFS(tfs, "partials.html"); err != nil {
+			return nil, err
 		}
-		s.pages[p] = t
+		s.pages[lang] = map[string]*template.Template{}
+		for _, p := range []string{"wallets", "inbox", "transactions", "flows", "balances", "graph", "export", "settings"} {
+			t, err := template.New("").Funcs(fm).ParseFS(tfs, "layout.html", "partials.html", p+".html")
+			if err != nil {
+				return nil, fmt.Errorf("template %s: %w", p, err)
+			}
+			s.pages[lang][p] = t
+		}
 	}
 	return s, nil
 }
@@ -66,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
 
 	mux.HandleFunc("GET /{$}", s.home)
+	mux.HandleFunc("GET /lang", s.setLang)
 	mux.HandleFunc("GET /wallets", s.walletsPage)
 	mux.HandleFunc("POST /wallets", s.walletsAdd)
 	mux.HandleFunc("GET /wallets/export", s.walletsExport)
@@ -139,8 +146,32 @@ func localOnly(h http.Handler) http.Handler {
 	})
 }
 
+const langCookie = "walletflow_lang"
+
+// lang is the UI language of the request: the cookie, or English.
+func lang(r *http.Request) i18n.Lang {
+	if c, err := r.Cookie(langCookie); err == nil {
+		return i18n.Parse(c.Value)
+	}
+	return i18n.EN
+}
+
+// tr returns the translator for the request language.
+func tr(r *http.Request) func(string, ...any) string { return lang(r).T }
+
+func (s *Server) setLang(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{Name: langCookie, Value: string(i18n.Parse(r.URL.Query().Get("set"))),
+		Path: "/", MaxAge: 10 * 365 * 24 * 3600, SameSite: http.SameSiteLaxMode})
+	back := "/"
+	if u, err := url.Parse(r.Referer()); err == nil && u.Host == r.Host && u.Path != "/lang" {
+		back = u.RequestURI()
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
 func (s *Server) page(r *http.Request, active, title string, data any) (Page, error) {
 	ctx := r.Context()
+	l := lang(r)
 	book, err := s.store.Book(ctx)
 	if err != nil {
 		return Page{}, err
@@ -150,8 +181,9 @@ func (s *Server) page(r *http.Request, active, title string, data any) (Page, er
 		return Page{}, err
 	}
 	return Page{
-		Title: title, Active: active, InboxCount: n, Book: book, Data: data,
-		Categories: s.categories(ctx), Sync: s.sync.Status(), Query: r.URL.Query(), Chains: s.chains,
+		Title: l.T(title), Active: active, InboxCount: n, Book: book, Data: data,
+		Categories: s.categories(ctx, l), Sync: s.sync.Status(), Query: r.URL.Query(), Chains: s.chains,
+		Lang: l, Langs: i18n.Langs, JSDict: l.Dict(), Demo: s.cfg.Demo,
 	}, nil
 }
 
@@ -162,7 +194,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, name, title stri
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.pages[name].ExecuteTemplate(w, "layout", p); err != nil {
+	if err := s.pages[p.Lang][name].ExecuteTemplate(w, "layout", p); err != nil {
 		log.Printf("render %s: %v", name, err)
 	}
 }
@@ -174,7 +206,7 @@ func (s *Server) renderPart(w http.ResponseWriter, r *http.Request, name string,
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := s.parts.ExecuteTemplate(w, name, p); err != nil {
+	if err := s.parts[p.Lang].ExecuteTemplate(w, name, p); err != nil {
 		log.Printf("render %s: %v", name, err)
 	}
 }
@@ -202,11 +234,20 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/inbox", http.StatusSeeOther)
 }
 
-const defaultCategories = "Покупка\nПродажа P2P\nДоход\nОплата\nПодарок\nСвоп\nВозврат\nДругое"
+// defaultCategories are used until the user edits the list in Settings.
+var defaultCategories = []string{"Purchase", "P2P sale", "Income", "Payment", "Gift", "Swap", "Refund", "Other"}
 
-func (s *Server) categories(ctx context.Context) []string {
+func defaultCategoriesText(l i18n.Lang) string {
+	out := make([]string, len(defaultCategories))
+	for i, c := range defaultCategories {
+		out[i] = l.T(c)
+	}
+	return strings.Join(out, "\n")
+}
+
+func (s *Server) categories(ctx context.Context, l i18n.Lang) []string {
 	var out []string
-	for line := range strings.Lines(s.store.Setting(ctx, "categories", defaultCategories)) {
+	for line := range strings.Lines(s.store.Setting(ctx, "categories", defaultCategoriesText(l))) {
 		if c := strings.TrimSpace(line); c != "" {
 			out = append(out, c)
 		}

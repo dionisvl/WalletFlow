@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"walletflow/internal/chain"
-	"walletflow/internal/ledger"
-	"walletflow/internal/store"
+	"github.com/dionisvl/walletflow/internal/chain"
+	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/store"
 )
 
 const (
@@ -62,7 +62,7 @@ func TestSmallWalletDoesNotWaitForBig(t *testing.T) {
 		func(context.Context) (string, string) { return "", "key" },
 		func(context.Context) map[string]bool { return map[string]bool{"tron": true} })
 	s.tronURL = srv.URL
-	s.Start(ctx)
+	s.Start(ctx, nil)
 	defer s.Stop()
 
 	deadline := time.Now().Add(10 * time.Second)
@@ -96,7 +96,7 @@ func TestStopsAtLimit(t *testing.T) {
 		func(context.Context) map[string]bool { return map[string]bool{"tron": true} })
 	s.tronURL = srv.URL
 	s.MaxPerAddress = 5
-	s.Start(ctx)
+	s.Start(ctx, nil)
 
 	deadline := time.Now().Add(10 * time.Second)
 	for s.Status().Running {
@@ -107,7 +107,7 @@ func TestStopsAtLimit(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	errs := s.Status().Errors
-	if len(errs) != 1 || !strings.Contains(errs[0], "похоже на биржу") {
+	if len(errs) != 1 || !strings.Contains(errs[0], "looks like an exchange") {
 		t.Errorf("errors = %q", errs)
 	}
 }
@@ -145,7 +145,7 @@ func TestSkipsBusyAddress(t *testing.T) {
 		func(context.Context) (string, string) { return "", "key" },
 		func(context.Context) map[string]bool { return map[string]bool{"tron": true} })
 	s.tronURL = srv.URL
-	s.Start(ctx)
+	s.Start(ctx, nil)
 	for deadline := time.Now().Add(5 * time.Second); s.Status().Running; time.Sleep(20 * time.Millisecond) {
 		if time.Now().After(deadline) {
 			s.Stop()
@@ -153,7 +153,7 @@ func TestSkipsBusyAddress(t *testing.T) {
 		}
 	}
 	errs := s.Status().Errors
-	if len(errs) != 1 || !strings.Contains(errs[0], "не загружаю") {
+	if len(errs) != 1 || !strings.Contains(errs[0], "skipped") {
 		t.Errorf("errors = %q", errs)
 	}
 	if n := ascRequests.Load(); n != 0 {

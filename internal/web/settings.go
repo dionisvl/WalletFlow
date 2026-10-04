@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"walletflow/internal/export"
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/export"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 // defaultChains are enabled until the user picks their own.
@@ -65,7 +65,7 @@ func (s *Server) renderSettings(w http.ResponseWriter, r *http.Request, saved bo
 		serverError(w, err)
 		return
 	}
-	s.render(w, r, "settings", "Настройки", settingsData{
+	s.render(w, r, "settings", "Settings", settingsData{
 		EtherscanKey:     s.store.Setting(ctx, "etherscan_key", ""),
 		TronGridKey:      s.store.Setting(ctx, "trongrid_key", ""),
 		EtherscanFromEnv: s.cfg.EtherscanKey != "",
@@ -73,7 +73,7 @@ func (s *Server) renderSettings(w http.ResponseWriter, r *http.Request, saved bo
 		EnvFile:          s.cfg.EnvFile,
 		IgnoreChains:     s.cfg.IgnoreChains,
 		Enabled:          s.enabledChains(ctx),
-		Categories:       s.store.Setting(ctx, "categories", defaultCategories),
+		Categories:       s.store.Setting(ctx, "categories", defaultCategoriesText(lang(r))),
 		Rules:            rules,
 		DBPath:           s.cfg.DBPath,
 		Saved:            saved,
@@ -129,7 +129,7 @@ func (s *Server) backup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) exportPage(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, "export", "Экспорт", nil)
+	s.render(w, r, "export", "Export", nil)
 }
 
 func (s *Server) exportFile(w http.ResponseWriter, r *http.Request) {
@@ -155,20 +155,22 @@ func (s *Server) exportFile(w http.ResponseWriter, r *http.Request) {
 	if q.Get("format") == "csv" {
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", `attachment; filename="`+name+`.csv"`)
-		if err := export.CSV(w, ts, addrs); err != nil {
+		if err := export.CSV(w, ts, addrs, tr(r)); err != nil {
 			log.Printf("export csv: %v", err)
 		}
 		return
 	}
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`.xlsx"`)
-	if err := export.XLSX(w, ts, addrs); err != nil {
+	if err := export.XLSX(w, ts, addrs, tr(r)); err != nil {
 		log.Printf("export xlsx: %v", err)
 	}
 }
 
 func (s *Server) syncStart(w http.ResponseWriter, r *http.Request) {
-	s.sync.Start(s.ctx)
+	if !s.cfg.Demo {
+		s.sync.Start(s.ctx, tr(r))
+	}
 	s.renderPart(w, r, "sync-status", nil)
 }
 

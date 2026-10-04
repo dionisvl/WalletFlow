@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 func (s *Store) Rules(ctx context.Context) ([]ledger.Rule, error) {

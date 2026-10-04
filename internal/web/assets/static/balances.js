@@ -17,7 +17,7 @@
     const series = d.series || [];
     const total = series.reduce((s, x) => s + (x.values.at(-1) || 0), 0);
     document.getElementById('balances-summary').textContent =
-      series.length ? `Сейчас всего: ${fmt(total)} ${d.symbol}` : 'Нет движений по своим кошелькам';
+      series.length ? t('Total now: %s', `${fmt(total)} ${d.symbol}`) : t('No movements in your wallets');
     chart.setOption({
       backgroundColor: 'transparent',
       textStyle: { color: textColor },

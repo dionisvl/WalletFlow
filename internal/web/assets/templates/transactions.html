@@ -1,29 +1,29 @@
 {{define "content"}}{{$p := .}}
 {{with .Data}}
 <form class="filters" method="get" action="/transactions">
-  <label>с <input type="date" name="from" value="{{$p.Q "from"}}"></label>
-  <label>по <input type="date" name="to" value="{{$p.Q "to"}}"></label>
-  <select name="chain"><option value="">все сети</option>{{range $p.Chains}}<option value="{{.Key}}" {{if eq .Key ($p.Q "chain")}}selected{{end}}>{{.Name}}</option>{{end}}</select>
-  <select name="asset"><option value="">все активы</option>{{range .Assets}}{{if not .IsSpam}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) ($p.Q "asset")}}selected{{end}}>{{.Symbol}} · {{chainName .Chain}}</option>{{end}}{{end}}</select>
-  <select name="class"><option value="">все классы</option>{{range classes}}<option value="{{.}}" {{if eq (printf "%s" .) ($p.Q "class")}}selected{{end}}>{{classLabel .}}</option>{{end}}</select>
-  <select name="wallet"><option value="">все кошельки</option>{{range .Wallets}}<option {{if eq . ($p.Q "wallet")}}selected{{end}}>{{.}}</option>{{end}}</select>
-  <select name="category"><option value="">все категории</option><option value="-" {{if eq "-" ($p.Q "category")}}selected{{end}}>без категории</option>{{range $p.Categories}}<option {{if eq . ($p.Q "category")}}selected{{end}}>{{.}}</option>{{end}}</select>
-  <label><input type="checkbox" name="spam" value="1" {{if $p.Q "spam"}}checked{{end}}> спам</label>
-  <label title="Переводы наблюдаемых кошельков с чужими адресами, вне твоего учёта"><input type="checkbox" name="all" value="1" {{if $p.Q "all"}}checked{{end}}> наблюдаемые</label>
-  <label title="Вызовы контрактов и неуспешные транзакции, где перевели 0, но заплатили комиссию"><input type="checkbox" name="zero" value="1" {{if $p.Q "zero"}}checked{{end}}> нулевые</label>
+  <label>{{t "since"}} <input type="date" name="from" value="{{$p.Q "from"}}"></label>
+  <label>{{t "until"}} <input type="date" name="to" value="{{$p.Q "to"}}"></label>
+  <select name="chain"><option value="">{{t "all networks"}}</option>{{range $p.Chains}}<option value="{{.Key}}" {{if eq .Key ($p.Q "chain")}}selected{{end}}>{{.Name}}</option>{{end}}</select>
+  <select name="asset"><option value="">{{t "all assets"}}</option>{{range .Assets}}{{if not .IsSpam}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) ($p.Q "asset")}}selected{{end}}>{{.Symbol}} · {{chainName .Chain}}</option>{{end}}{{end}}</select>
+  <select name="class"><option value="">{{t "all classes"}}</option>{{range classes}}<option value="{{.}}" {{if eq (printf "%s" .) ($p.Q "class")}}selected{{end}}>{{classLabel .}}</option>{{end}}</select>
+  <select name="wallet"><option value="">{{t "all wallets"}}</option>{{range .Wallets}}<option {{if eq . ($p.Q "wallet")}}selected{{end}}>{{.}}</option>{{end}}</select>
+  <select name="category"><option value="">{{t "all categories"}}</option><option value="-" {{if eq "-" ($p.Q "category")}}selected{{end}}>{{t "no category"}}</option>{{range $p.Categories}}<option {{if eq . ($p.Q "category")}}selected{{end}}>{{.}}</option>{{end}}</select>
+  <label><input type="checkbox" name="spam" value="1" {{if $p.Q "spam"}}checked{{end}}> {{t "spam"}}</label>
+  <label title="{{t "Transfers of watched wallets with outside addresses, not part of your ledger"}}"><input type="checkbox" name="all" value="1" {{if $p.Q "all"}}checked{{end}}> {{t "watched"}}</label>
+  <label title="{{t "Contract calls and failed transactions that moved 0 but paid a fee"}}"><input type="checkbox" name="zero" value="1" {{if $p.Q "zero"}}checked{{end}}> {{t "zero"}}</label>
   {{if or ($p.Q "src") ($p.Q "dst")}}
   <input type="hidden" name="src" value="{{$p.Q "src"}}"><input type="hidden" name="dst" value="{{$p.Q "dst"}}">
-  <span class="chip">связь: {{with $p.Q "src"}}{{$p.Label .}}{{else}}все{{end}} → {{with $p.Q "dst"}}{{$p.Label .}}{{else}}все{{end}}
-    <a href="/transactions" title="убрать">✕</a></span>
+  <span class="chip">{{t "link:"}} {{with $p.Q "src"}}{{$p.Label .}}{{else}}{{t "any"}}{{end}} → {{with $p.Q "dst"}}{{$p.Label .}}{{else}}{{t "any"}}{{end}}
+    <a href="/transactions" title="{{t "clear"}}">✕</a></span>
   {{end}}
-  <button class="primary">Показать</button>
-  <a href="/transactions">сброс</a>
+  <button class="primary">{{t "Show"}}</button>
+  <a href="/transactions">{{t "reset"}}</a>
 </form>
-<p class="muted">Найдено: {{.Total}}</p>
+<p class="muted">{{t "Found: %d" .Total}}</p>
 {{if .Rows}}
 <div class="table-wrap">
 <table class="table tx">
-  <thead><tr><th>Дата UTC</th><th>Сеть</th><th>Класс</th><th>Откуда</th><th>Куда</th><th class="num">Сумма</th><th>Комиссия</th><th>Категория</th><th>Комментарий</th><th>Tx</th></tr></thead>
+  <thead><tr><th>{{t "Date UTC"}}</th><th>{{t "Network"}}</th><th>{{t "Class"}}</th><th>{{t "From"}}</th><th>{{t "To"}}</th><th class="num">{{t "Amount"}}</th><th>{{t "Fee"}}</th><th>{{t "Category"}}</th><th>{{t "Comment"}}</th><th>Tx</th></tr></thead>
   <tbody>
   {{range .Rows}}
   <tr class="{{if .SameTx}}same-tx{{end}} {{if .Asset.IsSpam}}spam{{end}}">
@@ -45,9 +45,9 @@
 </table>
 </div>
 <div class="pager">
-  {{if .PrevQuery}}<a href="?{{.PrevQuery}}">← назад</a>{{end}}
-  <span class="muted">страница {{.Page}} из {{.Pages}}</span>
-  {{if .NextQuery}}<a href="?{{.NextQuery}}">вперёд →</a>{{end}}
+  {{if .PrevQuery}}<a href="?{{.PrevQuery}}">← {{t "back"}}</a>{{end}}
+  <span class="muted">{{t "page %d of %d" .Page .Pages}}</span>
+  {{if .NextQuery}}<a href="?{{.NextQuery}}">{{t "next"}} →</a>{{end}}
 </div>
 {{end}}
 {{end}}

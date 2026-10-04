@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"walletflow/internal/address"
-	"walletflow/internal/chain"
-	"walletflow/internal/chain/evm"
-	"walletflow/internal/chain/tron"
-	"walletflow/internal/ledger"
-	"walletflow/internal/store"
+	"github.com/dionisvl/walletflow/internal/address"
+	"github.com/dionisvl/walletflow/internal/chain"
+	"github.com/dionisvl/walletflow/internal/chain/evm"
+	"github.com/dionisvl/walletflow/internal/chain/tron"
+	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/store"
 )
 
 // Status is what the UI shows about the current or last run.
@@ -65,6 +65,8 @@ type Syncer struct {
 
 	// MaxPerAddress stops syncing an address once it has this many transfers; 0 = no limit.
 	MaxPerAddress int
+
+	tr func(string, ...any) string // translator of the run, set by Start
 }
 
 // New creates a syncer over the available chains.
@@ -92,14 +94,19 @@ func (s *Syncer) update(f func(*Status)) {
 	s.mu.Unlock()
 }
 
-// Start launches a sync unless one is already running.
-func (s *Syncer) Start(ctx context.Context) bool {
+// Start launches a sync unless one is already running. tr translates status
+// messages (nil = English).
+func (s *Syncer) Start(ctx context.Context, tr func(string, ...any) string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.status.Running {
 		return false
 	}
-	s.status = Status{Running: true, Message: "Старт…"}
+	if tr == nil {
+		tr = fmt.Sprintf
+	}
+	s.tr = tr
+	s.status = Status{Running: true, Message: tr("Starting…")}
 	s.blocked = map[string]bool{}
 	ctx, s.cancel = context.WithCancel(ctx)
 	go func() {
@@ -113,15 +120,15 @@ func (s *Syncer) Start(ctx context.Context) bool {
 			s.update(func(st *Status) {
 				st.Running = false
 				st.Finished = time.Now()
-				st.Message = fmt.Sprintf("Готово: +%d трансферов", st.Added)
+				st.Message = s.tr("Done: +%d transfers", st.Added)
 				if stopped {
-					st.Message = fmt.Sprintf("Остановлено: +%d трансферов. Следующий синк продолжит с места остановки.", st.Added)
+					st.Message = s.tr("Stopped: +%d transfers. The next sync continues from here.", st.Added)
 				}
 			})
 		}()
 		s.run(ctx)
 		// Classify what we have, even when stopped.
-		s.update(func(st *Status) { st.Message = "Классификация…" })
+		s.update(func(st *Status) { st.Message = s.tr("Classifying…") })
 		if err := s.store.RefreshBook(context.WithoutCancel(ctx)); err != nil {
 			s.fail(err)
 		}
@@ -135,7 +142,7 @@ func (s *Syncer) Stop() {
 	defer s.mu.Unlock()
 	if s.status.Running && s.cancel != nil {
 		s.cancel()
-		s.status.Message = "Останавливаю…"
+		s.status.Message = s.tr("Stopping…")
 	}
 }
 
@@ -182,7 +189,7 @@ func (s *Syncer) run(ctx context.Context) {
 		tc.Limit = chain.NewLimiter(time.Second) // public limits are tight
 	}
 	if ethKey == "" && slices.ContainsFunc(jobs, func(j job) bool { return j.chain.Family == address.EVM }) {
-		s.fail(errors.New("нет ключа Etherscan (ETHERSCAN_API_KEY в .env или Настройки), EVM сети пропущены"))
+		s.failf("No Etherscan key (ETHERSCAN_API_KEY in .env or Settings): EVM networks skipped")
 	}
 
 	// A few addresses at a time, so a huge history does not hold up small ones.
@@ -227,7 +234,7 @@ func (s *Syncer) runJob(ctx context.Context, j job, ec *evm.Client, tc *tron.Cli
 		return
 	}
 	progress := func(msg string) { s.update(func(st *Status) { st.setActive(key, msg) }) }
-	progress(key + ": старт")
+	progress(key + ": " + s.tr("starting"))
 	have, err := s.store.CountTransfers(ctx, store.Filter{Addresses: []string{j.addr}})
 	if err != nil {
 		s.fail(fmt.Errorf("%s: %w", key, err))
@@ -246,7 +253,7 @@ func (s *Syncer) runJob(ctx context.Context, j job, ec *evm.Client, tc *tron.Cli
 			return
 		}
 		if onChain == 0 {
-			progress(key + ": оценка активности")
+			progress(key + ": " + s.tr("measuring activity"))
 			var perDay float64
 			switch j.chain.Family {
 			case address.EVM:
@@ -280,7 +287,7 @@ func (s *Syncer) runJob(ctx context.Context, j job, ec *evm.Client, tc *tron.Cli
 		_, err = ec.Pull(ctx, j.chain, j.addr, s.store, emit, progress)
 		if errors.Is(err, evm.ErrNoChainAccess) {
 			if s.block(j.chain.Key) {
-				s.fail(fmt.Errorf("%s: недоступна на бесплатном тарифе Etherscan. Добавь %q в IGNORE_CHAINS в .env или сними галочку в Настройках", j.chain.Name, j.chain.Key))
+				s.failf("%s: not on the free Etherscan plan. Add %q to IGNORE_CHAINS in .env or untick it in Settings", j.chain.Name, j.chain.Key)
 			}
 			return
 		}
@@ -300,15 +307,15 @@ func (s *Syncer) runJob(ctx context.Context, j job, ec *evm.Client, tc *tron.Cli
 }
 
 func (s *Syncer) failTooBig(key string, n int) {
-	s.fail(fmt.Errorf("%s: синк остановлен на %d трансферах, похоже на биржу или сервис. "+
-		"Если это биржа, смени тип на «Биржа»: её история не нужна, лишнее удалится. "+
-		"Лимит: MAX_TRANSFERS_PER_ADDRESS в .env (0 = без лимита)", key, n))
+	s.failf("%s: sync stopped at %d transfers, looks like an exchange or a service. "+
+		"If it is an exchange, set its kind to Exchange: its history is not needed and the extra is removed. "+
+		"Limit: MAX_TRANSFERS_PER_ADDRESS in .env (0 = no limit)", key, n)
 }
 
 func (s *Syncer) failBusy(key string, perDay float64) {
-	s.fail(fmt.Errorf("%s: не загружаю, ≈%s переводов в день, похоже на биржу или сервис "+
-		"(за год вышло бы больше лимита %d). Если это биржа, смени тип на «Биржа». "+
-		"Лимит: MAX_TRANSFERS_PER_ADDRESS в .env (0 = без лимита)", key, roundRate(perDay), s.MaxPerAddress))
+	s.failf("%s: skipped, ≈%s transfers a day, looks like an exchange or a service "+
+		"(a year would pass the limit of %d). If it is an exchange, set its kind to Exchange. "+
+		"Limit: MAX_TRANSFERS_PER_ADDRESS in .env (0 = no limit)", key, roundRate(perDay), s.MaxPerAddress)
 }
 
 func roundRate(v float64) string {
@@ -333,6 +340,13 @@ func (s *Syncer) isBlocked(chain string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.blocked[chain]
+}
+
+// failf records a translated error message.
+func (s *Syncer) failf(format string, args ...any) {
+	msg := s.tr(format, args...)
+	log.Printf("sync: %s", msg)
+	s.update(func(st *Status) { st.Errors = append(st.Errors, msg) })
 }
 
 func (s *Syncer) fail(err error) {

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"walletflow/internal/chain"
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/chain"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 func TestParseErrors(t *testing.T) {

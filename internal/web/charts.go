@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"walletflow/internal/ledger"
-	"walletflow/internal/report"
-	"walletflow/internal/store"
+	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/report"
+	"github.com/dionisvl/walletflow/internal/store"
 )
 
 type assetsData struct {
@@ -43,15 +43,15 @@ func (s *Server) chartPage(name, title string) http.HandlerFunc {
 }
 
 func (s *Server) flowsPage(w http.ResponseWriter, r *http.Request) {
-	s.chartPage("flows", "Потоки")(w, r)
+	s.chartPage("flows", "Flows")(w, r)
 }
 
 func (s *Server) balancesPage(w http.ResponseWriter, r *http.Request) {
-	s.chartPage("balances", "Балансы")(w, r)
+	s.chartPage("balances", "Balances")(w, r)
 }
 
 func (s *Server) graphPage(w http.ResponseWriter, r *http.Request) {
-	s.chartPage("graph", "Граф связей")(w, r)
+	s.chartPage("graph", "Connections graph")(w, r)
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

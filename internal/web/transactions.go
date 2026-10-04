@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"walletflow/internal/ledger"
-	"walletflow/internal/store"
+	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/store"
 )
 
 const txPageSize = 100
@@ -155,5 +155,5 @@ func (s *Server) transactionsPage(w http.ResponseWriter, r *http.Request) {
 	if d.Page < d.Pages {
 		d.NextQuery = pageQuery(d.Page + 1)
 	}
-	s.render(w, r, "transactions", "Транзакции", d)
+	s.render(w, r, "transactions", "Transactions", d)
 }

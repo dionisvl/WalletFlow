@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"walletflow/internal/address"
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/address"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 type walletsData struct {
@@ -26,7 +26,7 @@ func (s *Server) renderWallets(w http.ResponseWriter, r *http.Request, d wallets
 		serverError(w, err)
 		return
 	}
-	s.render(w, r, "wallets", "Кошельки", d)
+	s.render(w, r, "wallets", "Wallets", d)
 }
 
 // walletsAdd takes one address from the form fields, or lines like
@@ -53,7 +53,7 @@ func (s *Server) walletsAdd(w http.ResponseWriter, r *http.Request) {
 		parts := splitLine(line)
 		fam, addr, err := address.Normalize(parts[0])
 		if err != nil {
-			d.Errors = append(d.Errors, fmt.Sprintf("%s: %v", line, err))
+			d.Errors = append(d.Errors, line+": "+lang(r).T(err.Error()))
 			continue
 		}
 		a := ledger.Address{Family: fam, Address: addr, Name: defName, Kind: defKind}
@@ -79,8 +79,8 @@ func (s *Server) walletsAdd(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if r.FormValue("then") == "graph" && len(d.Errors) == 0 {
-		if synced {
-			s.sync.Start(s.ctx)
+		if synced && !s.cfg.Demo {
+			s.sync.Start(s.ctx, tr(r))
 		}
 		http.Redirect(w, r, "/graph?common=1", http.StatusSeeOther)
 		return
@@ -97,10 +97,10 @@ func (s *Server) walletsExport(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="walletflow-wallets-`+time.Now().Format("2006-01-02")+`.txt"`)
-	fmt.Fprintln(w, "# адрес, имя, тип (мой / биржа / чужой / наблюдаемый)")
+	fmt.Fprintln(w, "# "+lang(r).T("address, name, kind")+" (mine / exchange / external / watch)")
 	for _, a := range addrs {
 		name := strings.NewReplacer(",", " ", ";", " ", "\t", " ").Replace(a.Name)
-		fmt.Fprintf(w, "%s, %s, %s\n", a.Address, name, strings.ToLower(a.Kind.Label()))
+		fmt.Fprintf(w, "%s, %s, %s\n", a.Address, name, a.Kind)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -16,9 +17,10 @@ import (
 	"syscall"
 	"time"
 
-	"walletflow/internal/config"
-	"walletflow/internal/store"
-	"walletflow/internal/web"
+	"github.com/dionisvl/walletflow/internal/config"
+	"github.com/dionisvl/walletflow/internal/demo"
+	"github.com/dionisvl/walletflow/internal/store"
+	"github.com/dionisvl/walletflow/internal/web"
 )
 
 func main() {
@@ -40,8 +42,15 @@ func run() error {
 	flag.StringVar(&cfg.Addr, "addr", cfg.Addr, "listen address (WALLETFLOW_ADDR)")
 	flag.StringVar(&cfg.DBPath, "db", cfg.DBPath, "database file (WALLETFLOW_DB, default: data dir)")
 	noBrowser := flag.Bool("no-browser", false, "do not open the browser")
+	flag.BoolVar(&cfg.Demo, "demo", false, "start with made-up sample data in a temporary database")
 	flag.Parse()
 
+	if cfg.Demo {
+		cfg.DBPath = filepath.Join(os.TempDir(), "walletflow-demo.db")
+		for _, suffix := range []string{"", "-wal", "-shm"} {
+			os.Remove(cfg.DBPath + suffix)
+		}
+	}
 	if cfg.DBPath == "" {
 		if err := os.MkdirAll(dataDir, 0o700); err != nil {
 			return err
@@ -54,6 +63,12 @@ func run() error {
 		return err
 	}
 	defer st.Close()
+	if cfg.Demo {
+		if err := demo.Seed(context.Background(), st, time.Now()); err != nil {
+			return fmt.Errorf("demo: %w", err)
+		}
+		log.Print("demo mode: sample data, sync is off")
+	}
 	if n, err := st.PurgeOrphans(context.Background()); err != nil {
 		return err
 	} else if n > 0 {

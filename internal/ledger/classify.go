@@ -76,23 +76,23 @@ func (c Class) Incoming() bool { return c == ClassInflow || c == ClassCEXWithdra
 var Classes = []Class{ClassInflow, ClassOutflow, ClassInternal, ClassCEXDeposit, ClassCEXWithdrawal, ClassUnknown}
 
 var classLabels = map[Class]string{
-	ClassInternal:      "Внутренний",
-	ClassCEXDeposit:    "На биржу",
-	ClassCEXWithdrawal: "С биржи",
-	ClassInflow:        "Входящий",
-	ClassOutflow:       "Исходящий",
-	ClassUnknown:       "Неизвестно",
+	ClassInternal:      "Internal",
+	ClassCEXDeposit:    "To exchange",
+	ClassCEXWithdrawal: "From exchange",
+	ClassInflow:        "Incoming",
+	ClassOutflow:       "Outgoing",
+	ClassUnknown:       "Unknown",
 }
 
-// Label is the human name of the class.
+// Label is the English name of the class (a key for i18n).
 func (c Class) Label() string { return classLabels[c] }
 
-var kindLabels = map[Kind]string{KindMine: "Мой", KindExchange: "Биржа", KindExternal: "Чужой", KindWatch: "Наблюдаемый"}
+var kindLabels = map[Kind]string{KindMine: "Mine", KindExchange: "Exchange", KindExternal: "External", KindWatch: "Watched"}
 
 // Synced reports whether addresses of this kind get their history downloaded.
 func (k Kind) Synced() bool { return k == KindMine || k == KindWatch }
 
-// Label is the human name of the kind.
+// Label is the English name of the kind (a key for i18n).
 func (k Kind) Label() string { return kindLabels[k] }
 
 // ParseKind accepts English and Russian names; it returns "" when unknown.

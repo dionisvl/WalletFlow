@@ -4,7 +4,7 @@ package chain
 import (
 	"slices"
 
-	"walletflow/internal/address"
+	"github.com/dionisvl/walletflow/internal/address"
 )
 
 // Chain is a network we can sync.

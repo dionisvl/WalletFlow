@@ -1,17 +1,17 @@
 {{define "content"}}{{$p := .}}
 {{with .Data}}
 {{if not .Assets}}
-<div class="empty">Пока нет данных. Добавь кошельки и нажми «Синк».</div>
+<div class="empty">{{t "No data yet. Add wallets and press Sync."}}</div>
 {{else}}
 <form class="filters" id="flows-form">
   <select name="asset">{{range .Assets}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) ($p.Q "asset")}}selected{{end}}>{{.Symbol}} · {{chainName .Chain}}</option>{{end}}</select>
-  <label>с <input type="date" name="from" value="{{$p.Q "from"}}"></label>
-  <label>по <input type="date" name="to" value="{{$p.Q "to"}}"></label>
-  <label>скрыть потоки меньше <input type="number" name="min" value="1" min="0" max="50" step="0.5" style="width:5em">%</label>
+  <label>{{t "since"}} <input type="date" name="from" value="{{$p.Q "from"}}"></label>
+  <label>{{t "until"}} <input type="date" name="to" value="{{$p.Q "to"}}"></label>
+  <label>{{t "hide flows under"}} <input type="number" name="min" value="1" min="0" max="50" step="0.5" style="width:5em">%</label>
 </form>
 <p class="muted" id="flows-summary"></p>
 <div id="sankey" class="chart"></div>
-<p class="muted">Слева: откуда пришло. В центре: твои кошельки. Справа: куда ушло. Внутренние переводы не показаны. Клик по потоку откроет транзакции.</p>
+<p class="muted">{{t "Left: where money came from. Middle: your wallets. Right: where it went. Internal transfers are not shown. Click a flow to see its transactions."}}</p>
 <script src="/static/echarts.min.js"></script>
 <script src="/static/flows.js"></script>
 {{end}}

@@ -1,15 +1,15 @@
 {{define "content"}}{{$p := .}}
 <form class="card" method="get" action="/export/file">
   <div class="row">
-    <label>с <input type="date" name="from"></label>
-    <label>по <input type="date" name="to"></label>
-    <label><input type="checkbox" name="spam" value="1"> включить спам-токены</label>
-    <label><input type="checkbox" name="all" value="1"> включить переводы наблюдаемых кошельков</label>
+    <label>{{t "since"}} <input type="date" name="from"></label>
+    <label>{{t "until"}} <input type="date" name="to"></label>
+    <label><input type="checkbox" name="spam" value="1"> {{t "include spam tokens"}}</label>
+    <label><input type="checkbox" name="all" value="1"> {{t "include transfers of watched wallets"}}</label>
   </div>
   <div class="row">
-    <button class="primary" name="format" value="xlsx">Скачать Excel (.xlsx)</button>
-    <button name="format" value="csv">Скачать CSV</button>
+    <button class="primary" name="format" value="xlsx">{{t "Download Excel (.xlsx)"}}</button>
+    <button name="format" value="csv">{{t "Download CSV"}}</button>
   </div>
-  <p class="muted">Полный журнал: дата, сеть, класс, категория, адреса с именами, суммы, комиссии, хэши, комментарии. Второй лист: адресная книга.</p>
+  <p class="muted">{{t "The full journal: date, network, class, category, addresses with names, amounts, fees, hashes, comments. The second sheet is the address book."}}</p>
 </form>
 {{end}}

@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"slices"
 
-	"walletflow/internal/address"
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/address"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 // GraphNode is a wallet, an entity (addresses sharing a name) or an unknown counterparty.
@@ -19,6 +19,7 @@ type GraphNode struct {
 	Ref       string   `json:"ref,omitempty"` // value for the transactions filter
 	Addresses []string `json:"addresses,omitempty"`
 	Count     int      `json:"count"`
+	Folded    int      `json:"folded,omitempty"` // "more" nodes: how many addresses they hold
 }
 
 // AssetTotal is how much of one asset moved along an edge.
@@ -100,6 +101,7 @@ type graphBuilder struct {
 	nodes  map[string]*GraphNode
 	edges  map[[2]string]*edgeAcc
 	hidden int
+	folded map[string]int // "more" node id → addresses folded into it
 }
 
 func (b *graphBuilder) node(id string, mk func() GraphNode) *GraphNode {
@@ -225,6 +227,14 @@ func (b *graphBuilder) addOutside(ts []ledger.Transfer) {
 				keep[s] = true
 			} else {
 				b.hidden++
+				if b.folded == nil {
+					b.folded = map[string]int{}
+				}
+				if s.incoming {
+					b.folded["more:in"]++
+				} else {
+					b.folded["more:out"]++
+				}
 			}
 		}
 	}
@@ -240,9 +250,9 @@ func (b *graphBuilder) addOutside(ts []ledger.Transfer) {
 		case keep[s]:
 			un = b.outsideNode(s.addr, "unknown")
 		default:
-			id, label := "more:out", "другие получатели"
+			id, label := "more:out", "other receivers"
 			if s.incoming {
-				id, label = "more:in", "другие отправители"
+				id, label = "more:in", "other senders"
 			}
 			un = b.node(id, func() GraphNode { return GraphNode{ID: id, Label: label, Kind: "more"} })
 		}
@@ -265,7 +275,7 @@ func (b *graphBuilder) result() Graph {
 	g := Graph{HiddenUnknown: b.hidden}
 	for _, n := range b.nodes {
 		if n.Kind == "more" {
-			n.Label = fmt.Sprintf("%s (%d)", n.Label, b.hidden)
+			n.Folded = b.folded[n.ID]
 		}
 		g.Nodes = append(g.Nodes, *n)
 	}

@@ -1,15 +1,14 @@
 {{define "content"}}{{$p := .}}
 {{with .Data}}
 {{if not .Assets}}
-<div class="empty">Пока нет данных. Добавь кошельки и нажми «Синк».</div>
+<div class="empty">{{t "No data yet. Add wallets and press Sync."}}</div>
 {{else}}
 <form class="filters" id="balances-form">
   <select name="asset">{{range .Assets}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) ($p.Q "asset")}}selected{{end}}>{{.Symbol}} · {{chainName .Chain}}</option>{{end}}</select>
 </form>
 <p class="muted" id="balances-summary"></p>
 <div id="balances-chart" class="chart"></div>
-<p class="muted">Баланс восстановлен по истории трансферов в монетах актива, с учётом комиссий для нативной монеты.
-  Если синк не завершён или есть операции вне блокчейна, график может уходить в минус.</p>
+<p class="muted">{{t "Balances are rebuilt from transfer history in units of the asset, with fees for the native coin. An unfinished sync or off-chain moves can make the line go below zero."}}</p>
 <script src="/static/echarts.min.js"></script>
 <script src="/static/balances.js"></script>
 {{end}}

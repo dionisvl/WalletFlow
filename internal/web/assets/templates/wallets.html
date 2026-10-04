@@ -1,65 +1,65 @@
 {{define "content"}}
 {{with .Data}}
 <form class="card" method="post" action="/wallets">
-  <h2>Добавить кошелёк</h2>
+  <h2>{{t "Add a wallet"}}</h2>
   <div class="add-row">
-    <input name="address" placeholder="адрес 0x… или T…" required autofocus spellcheck="false" autocomplete="off" class="addr-input">
-    <input name="name" placeholder="имя, напр. Ledger">
+    <input name="address" placeholder="{{t "address 0x… or T…"}}" required autofocus spellcheck="false" autocomplete="off" class="addr-input">
+    <input name="name" placeholder="{{t "name, e.g. Ledger"}}">
     <select name="kind">{{range kinds}}<option value="{{.}}">{{kindLabel .}}</option>{{end}}</select>
-    <button class="primary">Добавить</button>
-    <button name="then" value="graph" title="Добавить, запустить синк и открыть граф связей">Добавить и показать граф</button>
+    <button class="primary">{{t "Add"}}</button>
+    <button name="then" value="graph" title="{{t "Add, start a sync and open the connections graph"}}">{{t "Add and show graph"}}</button>
   </div>
   <dl class="kinds">
-    <dt class="kind-mine">Мой</dt><dd>история скачивается и входит в твой учёт: Inbox, балансы, экспорт</dd>
-    <dt class="kind-exchange">Биржа</dt><dd>не скачивается; переводы с ней распознаются сами и не идут в Inbox</dd>
-    <dt class="kind-external">Чужой</dt><dd>не скачивается; просто имя для контрагента, переводы остаются в Inbox</dd>
-    <dt class="kind-watch">Наблюдаемый</dt><dd>история скачивается только для графа связей, в учёт не входит</dd>
+    <dt class="kind-mine">{{kindLabel "mine"}}</dt><dd>{{t "history is downloaded and goes into your ledger: Inbox, balances, export"}}</dd>
+    <dt class="kind-exchange">{{kindLabel "exchange"}}</dt><dd>{{t "not downloaded; transfers with it are recognized automatically and skip the Inbox"}}</dd>
+    <dt class="kind-external">{{kindLabel "external"}}</dt><dd>{{t "not downloaded; just a name for a counterparty, its transfers stay in the Inbox"}}</dd>
+    <dt class="kind-watch">{{kindLabel "watch"}}</dt><dd>{{t "history is downloaded for the connections graph only, outside your ledger"}}</dd>
   </dl>
-  <p class="muted">Поддерживаются EVM (<code>0x…</code>: {{$.EVMChains}}) и Tron (<code>T…</code>).
-    Только публичные адреса, никаких seed-фраз и ключей.</p>
+  <p class="muted">{{t "Supported: EVM"}} (<code>0x…</code>: {{$.EVMChains}}) {{t "and Tron"}} (<code>T…</code>).
+    {{t "Public addresses only: never seed phrases or private keys."}}</p>
 </form>
 
 <details class="card" {{if .Errors}}open{{end}}>
-  <summary><b>Добавить списком</b> <span class="muted">· несколько адресов сразу или файл, выгруженный кнопкой «Выгрузить список»</span></summary>
+  <summary><b>{{t "Add a list"}}</b> <span class="muted">· {{t "many addresses at once, or a file saved with “Export list”"}}</span></summary>
   <form method="post" action="/wallets">
-    <label>По одному на строке: <code>адрес, имя, тип</code>. Имя и тип можно не указывать.</label>
-    <textarea name="lines" rows="6" placeholder="0x1234…abcd, Ledger, мой
-TXyz…, Binance депозит, биржа
-TAbc…, Подозрительный, наблюдаемый" required></textarea>
+    <label>{{t "One per line:"}} <code>{{t "address, name, kind"}}</code>. {{t "Name and kind are optional."}}</label>
+    <textarea name="lines" rows="6" placeholder="0x1234…abcd, Ledger, mine
+TXyz…, Binance deposit, exchange
+TAbc…, Suspect, watch" required></textarea>
     <div class="row">
-      <span>Если в строке не указано:</span>
+      <span>{{t "When a line has none:"}}</span>
       <select name="kind">{{range kinds}}<option value="{{.}}">{{kindLabel .}}</option>{{end}}</select>
-      <input name="name" placeholder="имя">
-      <button class="primary">Добавить</button>
-      <button name="then" value="graph">Добавить и показать граф</button>
+      <input name="name" placeholder="{{t "name"}}">
+      <button class="primary">{{t "Add"}}</button>
+      <button name="then" value="graph">{{t "Add and show graph"}}</button>
     </div>
   </form>
 </details>
-{{if .Added}}<p class="ok">Добавлено: {{.Added}}. Нажми «Синк», чтобы загрузить историю «моих» и «наблюдаемых».</p>{{end}}
+{{if .Added}}<p class="ok">{{t "Added: %d. Press Sync to download the history of “mine” and “watched” wallets." .Added}}</p>{{end}}
 {{range .Errors}}<p class="error">{{.}}</p>{{end}}
 
 {{if .Addresses}}
 <div class="row toolbar">
-  <span class="muted">Адресов: {{len .Addresses}}</span>
-  <a class="button" href="/wallets/export">Выгрузить список</a>
-  <a class="button" href="/graph?common=1">Граф связей</a>
+  <span class="muted">{{t "Addresses: %d" (len .Addresses)}}</span>
+  <a class="button" href="/wallets/export">{{t "Export list"}}</a>
+  <a class="button" href="/graph?common=1">{{t "Connections graph"}}</a>
 </div>
 <table class="table">
-  <thead><tr><th>Цвет</th><th>Имя</th><th>Тип</th><th>Адрес</th><th>Сеть</th><th></th></tr></thead>
+  <thead><tr><th>{{t "Color"}}</th><th>{{t "Name"}}</th><th>{{t "Kind"}}</th><th>{{t "Address"}}</th><th>{{t "Network"}}</th><th></th></tr></thead>
   <tbody>
   {{range .Addresses}}
   <tr hx-post="/wallets/{{.ID}}" hx-trigger="change" hx-include="this" hx-swap="none">
     <td><input type="color" name="color" value="{{if .Color}}{{.Color}}{{else}}#888888{{end}}"></td>
-    <td><input name="name" value="{{.Name}}" placeholder="без имени"></td>
+    <td><input name="name" value="{{.Name}}" placeholder="{{t "no name"}}"></td>
     <td><select name="kind" class="kind-{{.Kind}}">{{$k := .Kind}}{{range kinds}}<option value="{{.}}" {{if eq . $k}}selected{{end}}>{{kindLabel .}}</option>{{end}}</select></td>
     <td><code class="addr" data-copy="{{.Address}}">{{.Address}}</code></td>
     <td class="muted">{{if eq .Family "evm"}}EVM{{else}}Tron{{end}}</td>
-    <td><button class="link danger" hx-post="/wallets/{{.ID}}/delete" hx-confirm="Удалить адрес {{.Label}}? Его неразмеченные трансферы тоже удалятся (вернуть можно повторным синком)." hx-target="closest tr" hx-swap="outerHTML">удалить</button></td>
+    <td><button class="link danger" hx-post="/wallets/{{.ID}}/delete" hx-confirm="{{t "Delete %s? Its unreviewed transfers are deleted too (a new sync brings them back)." .Label}}" hx-target="closest tr" hx-swap="outerHTML">{{t "delete"}}</button></td>
   </tr>
   {{end}}
   </tbody>
 </table>
-<p class="muted">Изменения сохраняются сразу. Одинаковое имя у нескольких адресов = одна сущность (например, все адреса Binance).</p>
+<p class="muted">{{t "Changes are saved at once. Addresses with the same name are one entity (e.g. all Binance addresses)."}}</p>
 {{end}}
 {{end}}
 {{end}}

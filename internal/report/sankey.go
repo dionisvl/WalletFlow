@@ -5,8 +5,8 @@ import (
 	"cmp"
 	"slices"
 
-	"walletflow/internal/address"
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/address"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 // SankeyNode is a node of the flow chart.
@@ -35,7 +35,8 @@ type Sankey struct {
 	Out    float64      `json:"out"`
 }
 
-const otherLabel = "Чужие (без разметки)"
+// otherLabel names unnamed, unreviewed outside addresses; the UI translates it.
+const otherLabel = "Unreviewed outsiders"
 
 // BuildSankey lays flows out in three columns: sources → my wallets → destinations.
 // Internal transfers are skipped: they would create cycles and are not real flows.

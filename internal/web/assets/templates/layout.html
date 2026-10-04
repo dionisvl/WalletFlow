@@ -1,29 +1,37 @@
 {{define "layout"}}<!doctype html>
-<html lang="ru">
+<html lang="{{.Lang}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}} · WalletFlow</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/style.css">
+<script>window.I18N = {{.JSDict}};</script>
+<script src="/static/i18n.js"></script>
 <script src="/static/htmx.min.js"></script>
 </head>
 <body>
 <aside class="sidebar">
-  <div class="brand">WalletFlow</div>
+  <div class="brand"><img src="/static/favicon.svg" alt="" width="20" height="20"> WalletFlow</div>
   <nav>
-    <a href="/inbox" class="{{if eq .Active "inbox"}}active{{end}}">Inbox
+    <a href="/inbox" class="{{if eq .Active "inbox"}}active{{end}}">{{t "Inbox"}}
       <span class="badge" hx-get="/inbox/count" hx-trigger="inboxChanged from:body">{{if .InboxCount}}{{.InboxCount}}{{end}}</span></a>
-    <a href="/transactions" class="{{if eq .Active "transactions"}}active{{end}}">Транзакции</a>
-    <a href="/flows" class="{{if eq .Active "flows"}}active{{end}}">Потоки</a>
-    <a href="/balances" class="{{if eq .Active "balances"}}active{{end}}">Балансы</a>
-    <a href="/graph" class="{{if eq .Active "graph"}}active{{end}}">Граф</a>
-    <a href="/wallets" class="{{if eq .Active "wallets"}}active{{end}}">Кошельки</a>
-    <a href="/export" class="{{if eq .Active "export"}}active{{end}}">Экспорт</a>
-    <a href="/settings" class="{{if eq .Active "settings"}}active{{end}}">Настройки</a>
+    <a href="/transactions" class="{{if eq .Active "transactions"}}active{{end}}">{{t "Transactions"}}</a>
+    <a href="/flows" class="{{if eq .Active "flows"}}active{{end}}">{{t "Flows"}}</a>
+    <a href="/balances" class="{{if eq .Active "balances"}}active{{end}}">{{t "Balances"}}</a>
+    <a href="/graph" class="{{if eq .Active "graph"}}active{{end}}">{{t "Graph"}}</a>
+    <a href="/wallets" class="{{if eq .Active "wallets"}}active{{end}}">{{t "Wallets"}}</a>
+    <a href="/export" class="{{if eq .Active "export"}}active{{end}}">{{t "Export"}}</a>
+    <a href="/settings" class="{{if eq .Active "settings"}}active{{end}}">{{t "Settings"}}</a>
   </nav>
   <div class="sync">
-    <button class="primary" hx-post="/sync" hx-target="#sync-status" hx-swap="outerHTML">Синк</button>
+    {{if .Demo}}
+    <div class="demo-note">{{t "Demo mode: sample data, sync is off."}}</div>
+    {{else}}
+    <button class="primary" hx-post="/sync" hx-target="#sync-status" hx-swap="outerHTML">{{t "Sync"}}</button>
+    {{end}}
     {{template "sync-status" .}}
+    <div class="lang-switch">{{$cur := .Lang}}{{range .Langs}}<a href="/lang?set={{.}}" class="{{if eq . $cur}}active{{end}}">{{.Name}}</a>{{end}}</div>
   </div>
 </aside>
 <main>

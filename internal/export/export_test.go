@@ -7,21 +7,21 @@ import (
 
 	"github.com/xuri/excelize/v2"
 
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 func sample() ([]ledger.Transfer, []ledger.Address) {
 	addrs := []ledger.Address{{Address: "me", Name: "Main", Kind: ledger.KindMine, Family: "tron"}}
 	ts := []ledger.Transfer{{Chain: "tron", TxHash: "h1", TS: 1700000000, From: "me", To: "x",
 		Asset: ledger.Asset{Chain: "tron", Symbol: "TRX", Decimals: 6}, AmountRaw: "1500000", FeeRaw: "1000000",
-		Class: ledger.ClassOutflow, Category: "Оплата"}}
+		Class: ledger.ClassOutflow, Category: "Payment"}}
 	return ts, addrs
 }
 
 func TestCSV(t *testing.T) {
 	ts, addrs := sample()
 	var b bytes.Buffer
-	if err := CSV(&b, ts, addrs); err != nil {
+	if err := CSV(&b, ts, addrs, nil); err != nil {
 		t.Fatal(err)
 	}
 	out := b.String()
@@ -33,18 +33,18 @@ func TestCSV(t *testing.T) {
 func TestXLSX(t *testing.T) {
 	ts, addrs := sample()
 	var b bytes.Buffer
-	if err := XLSX(&b, ts, addrs); err != nil {
+	if err := XLSX(&b, ts, addrs, nil); err != nil {
 		t.Fatal(err)
 	}
 	f, err := excelize.OpenReader(&b)
 	if err != nil {
 		t.Fatal(err)
 	}
-	v, _ := f.GetCellValue("Журнал", "J2")
+	v, _ := f.GetCellValue("Journal", "J2")
 	if v != "1.5" {
 		t.Errorf("amount cell = %q", v)
 	}
-	if name, _ := f.GetCellValue("Адреса", "C2"); name != "Main" {
+	if name, _ := f.GetCellValue("Addresses", "C2"); name != "Main" {
 		t.Errorf("address sheet = %q", name)
 	}
 }

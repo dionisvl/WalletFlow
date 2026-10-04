@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"walletflow/internal/address"
-	"walletflow/internal/chain"
-	"walletflow/internal/ledger"
+	"github.com/dionisvl/walletflow/internal/address"
+	"github.com/dionisvl/walletflow/internal/chain"
+	"github.com/dionisvl/walletflow/internal/ledger"
 )
 
 const defaultURL = "https://api.trongrid.io"
