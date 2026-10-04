@@ -163,7 +163,9 @@ func (s *Server) setLang(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: langCookie, Value: string(i18n.Parse(r.URL.Query().Get("set"))),
 		Path: "/", MaxAge: 10 * 365 * 24 * 3600, SameSite: http.SameSiteLaxMode})
 	back := "/"
-	if u, err := url.Parse(r.Referer()); err == nil && u.Host == r.Host && u.Path != "/lang" {
+	if b := r.URL.Query().Get("back"); strings.HasPrefix(b, "/") && !strings.HasPrefix(b, "//") {
+		back = b // explicit local path, e.g. a link that opens a page in a given language
+	} else if u, err := url.Parse(r.Referer()); err == nil && u.Host == r.Host && u.Path != "/lang" {
 		back = u.RequestURI()
 	}
 	http.Redirect(w, r, back, http.StatusSeeOther)
