@@ -102,3 +102,4 @@ td.known { font-weight: 600; }
   nav { flex-direction: row; flex-wrap: wrap; }
   main { padding: 16px; }
 }
+.warn { color: var(--out); background: color-mix(in srgb, var(--out) 12%, transparent); border-radius: 6px; padding: 4px 8px; margin: 4px 0; }

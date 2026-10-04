@@ -23,6 +23,7 @@
     }
     chart.setOption({
       backgroundColor: 'transparent',
+      textStyle: { color: textColor },
       tooltip: {
         trigger: 'item',
         formatter: (p) => p.dataType === 'edge'

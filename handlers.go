@@ -75,6 +75,25 @@ func (p Page) Fee(t Transfer) string {
 
 func (p Page) Q(key string) string { return p.Query.Get(key) }
 
+// Lookalike returns the name of a known address that addr imitates:
+// same first and last 4 characters but a different address (address poisoning).
+func (p Page) Lookalike(addr string) string {
+	if p.Known(addr) || len(addr) < 12 {
+		return ""
+	}
+	start := 2 // skip 0x
+	if !strings.HasPrefix(addr, "0x") {
+		start = 1 // skip T
+	}
+	for _, a := range p.Book {
+		k := a.Address
+		if len(k) == len(addr) && k[start:start+4] == addr[start:start+4] && k[len(k)-4:] == addr[len(addr)-4:] {
+			return a.Label()
+		}
+	}
+	return ""
+}
+
 var kindLabels = map[Kind]string{KindMine: "Мой", KindExchange: "Биржа", KindExternal: "Чужой"}
 
 var classLabels = map[Class]string{
@@ -122,7 +141,7 @@ func newApp(ctx context.Context, st *Store, dbPath string) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, p := range []string{"wallets", "inbox", "transactions", "flows", "export", "settings"} {
+	for _, p := range []string{"wallets", "inbox", "transactions", "flows", "balances", "export", "settings"} {
 		t, err := template.New("").Funcs(funcs).ParseFS(tfs, "layout.html", "partials.html", p+".html")
 		if err != nil {
 			return nil, fmt.Errorf("template %s: %w", p, err)
@@ -154,6 +173,8 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("GET /transactions", a.transactionsPage)
 	mux.HandleFunc("GET /flows", a.flowsPage)
 	mux.HandleFunc("GET /flows/data", a.flowsData)
+	mux.HandleFunc("GET /balances", a.balancesPage)
+	mux.HandleFunc("GET /balances/data", a.balancesData)
 	mux.HandleFunc("GET /export", a.exportPage)
 	mux.HandleFunc("GET /export/file", a.exportFile)
 
@@ -547,6 +568,7 @@ func (a *App) filterFromQuery(ctx context.Context, q url.Values) (Filter, error)
 		Chain:    q.Get("chain"),
 		Class:    q.Get("class"),
 		HideSpam: q.Get("spam") == "",
+		HideZero: q.Get("zero") == "",
 	}
 	f.AssetID, _ = strconv.ParseInt(q.Get("asset"), 10, 64)
 	switch c := q.Get("category"); c {
@@ -681,6 +703,44 @@ func (a *App) flowsData(w http.ResponseWriter, r *http.Request) {
 	minPct, _ := strconv.ParseFloat(r.URL.Query().Get("min"), 64)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(buildSankey(ts, book, minPct))
+}
+
+// --- balances ---
+
+func (a *App) balancesPage(w http.ResponseWriter, r *http.Request) {
+	assets, err := a.store.Assets(r.Context())
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	var visible []Asset
+	for _, as := range assets {
+		if !as.IsSpam {
+			visible = append(visible, as)
+		}
+	}
+	a.render(w, r, "balances", "Балансы", flowsData{Assets: visible})
+}
+
+func (a *App) balancesData(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, _ := strconv.ParseInt(r.URL.Query().Get("asset"), 10, 64)
+	if id == 0 {
+		http.Error(w, "asset required", http.StatusBadRequest)
+		return
+	}
+	ts, err := a.store.Transfers(ctx, Filter{AssetID: id})
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	book, err := a.store.AddressBook(ctx)
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(buildBalances(ts, book))
 }
 
 // --- export ---

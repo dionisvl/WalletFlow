@@ -15,6 +15,7 @@
       <span class="badge" hx-get="/inbox/count" hx-trigger="inboxChanged from:body">{{if .InboxCount}}{{.InboxCount}}{{end}}</span></a>
     <a href="/transactions" class="{{if eq .Active "transactions"}}active{{end}}">Транзакции</a>
     <a href="/flows" class="{{if eq .Active "flows"}}active{{end}}">Потоки</a>
+    <a href="/balances" class="{{if eq .Active "balances"}}active{{end}}">Балансы</a>
     <a href="/wallets" class="{{if eq .Active "wallets"}}active{{end}}">Кошельки</a>
     <a href="/export" class="{{if eq .Active "export"}}active{{end}}">Экспорт</a>
     <a href="/settings" class="{{if eq .Active "settings"}}active{{end}}">Настройки</a>

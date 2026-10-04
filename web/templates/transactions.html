@@ -9,6 +9,7 @@
   <select name="wallet"><option value="">все кошельки</option>{{range .Wallets}}<option {{if eq . ($p.Q "wallet")}}selected{{end}}>{{.}}</option>{{end}}</select>
   <select name="category"><option value="">все категории</option><option value="-" {{if eq "-" ($p.Q "category")}}selected{{end}}>без категории</option>{{range $p.Categories}}<option {{if eq . ($p.Q "category")}}selected{{end}}>{{.}}</option>{{end}}</select>
   <label><input type="checkbox" name="spam" value="1" {{if $p.Q "spam"}}checked{{end}}> спам</label>
+  <label title="Вызовы контрактов и неуспешные транзакции, где перевели 0, но заплатили комиссию"><input type="checkbox" name="zero" value="1" {{if $p.Q "zero"}}checked{{end}}> нулевые</label>
   <button class="primary">Показать</button>
   <a href="/transactions">сброс</a>
 </form>

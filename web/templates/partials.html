@@ -44,6 +44,7 @@
     <div>
       {{if $t.Incoming}}от{{else}}кому{{end}}
       <b title="{{$cp}}">{{$p.Label $cp}}</b> <code class="addr" data-copy="{{$cp}}" title="копировать">{{$cp}}</code>
+      {{with $p.Lookalike $cp}}<div class="warn">⚠ Адрес похож на «{{.}}», но это другой адрес. Возможно address poisoning: не копируй его из истории.</div>{{end}}
       · {{if $t.Incoming}}на{{else}}с{{end}} <b>{{if $t.Incoming}}{{$p.Label $t.To}}{{else}}{{$p.Label $t.From}}{{end}}</b>
     </div>
     <div class="cats">

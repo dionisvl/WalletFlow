@@ -269,6 +269,7 @@ type Filter struct {
 	Uncategorized bool
 	Inbox         bool
 	HideSpam      bool
+	HideZero      bool
 	Limit, Offset int
 }
 
@@ -311,6 +312,9 @@ func (f Filter) where() (string, []any) {
 	}
 	if f.Inbox {
 		add("t.class IN ('inflow', 'outflow', 'unknown') AND t.category IS NULL AND t.amount_raw != '0'")
+	}
+	if f.HideZero {
+		add("t.amount_raw != '0'")
 	}
 	if f.HideSpam || f.Inbox {
 		add("a.is_spam = 0")
