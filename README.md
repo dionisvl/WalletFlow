@@ -1,89 +1,131 @@
-# WalletFlow
+<p align="center">
+  <img src="internal/web/assets/static/favicon.svg" width="72" alt="">
+</p>
 
-Локальный журнал крипто-кошельков. Добавляешь адреса, помечаешь «мой / биржа / чужой»,
-приложение тянет историю, само распознаёт внутренние переводы и переводы с биржами,
-а всё остальное складывает в Inbox для разметки. Sankey потоков и экспорт в Excel.
+<h1 align="center">WalletFlow</h1>
 
-Всё локально: один бинарник, база SQLite. Только публичные адреса, никаких seed-фраз.
+<p align="center">
+  <b>A local, private ledger for your crypto wallets.</b><br>
+  Paste your addresses, and WalletFlow pulls the history, spots transfers between your own wallets
+  and exchanges by itself, and leaves only the rest for you to review.
+</p>
 
-## Запуск
+<p align="center">
+  <a href="https://github.com/dionisvl/walletflow/actions/workflows/ci.yml"><img src="https://github.com/dionisvl/walletflow/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/dionisvl/walletflow" alt="Go version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/dionisvl/walletflow" alt="License: MIT"></a>
+  <a href="README.ru.md"><img src="https://img.shields.io/badge/README-на_русском-blue" alt="Русский"></a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/graph.webp" alt="Connections graph" width="900">
+</p>
+
+## Why
+
+Forensics tools draw beautiful graphs but live in the cloud and have no ledger.
+Tax tools have a ledger but no graph, and you hand them your whole wallet map.
+WalletFlow sits in between and keeps everything on your machine:
+
+- **Local first.** One binary, one SQLite file. No account, no telemetry. Only public addresses: never seed phrases or keys.
+- **Knows what is yours.** Mark addresses as *mine*, *exchange*, *external* or *watched*. Moves between your wallets and to/from exchanges are classified automatically.
+- **Inbox zero.** Everything with outside addresses lands in an Inbox you clear with the keyboard (`1`…`9`, `j`/`k`). One tick turns a choice into a rule for the whole history.
+- **See the money move.** A Sankey of where funds came from and went, balances over time, and an interactive connections graph.
+- **Check how wallets are linked.** Add 2–10 wallets as *watched* and the graph shows direct transfers and **shared counterparties**, even when the wallets never paid each other.
+- **Export.** The full journal to Excel or CSV, with names, fees and links.
+
+## Try it in 10 seconds
+
+No API keys needed for the demo: it runs on made-up wallets and fourteen months of sample transfers.
 
 ```bash
-cp .env.example .env   # вписать ключи
-go run ./cmd/walletflow
-# или собрать: go build -o bin/walletflow ./cmd/walletflow
+go run github.com/dionisvl/walletflow/cmd/walletflow@latest -demo
 ```
 
-Откроется `http://127.0.0.1:8080`. База: `~/Library/Application Support/WalletFlow/walletflow.db`.
+Or download a binary for macOS, Linux or Windows from [Releases](https://github.com/dionisvl/walletflow/releases) and run `walletflow -demo`.
+The binaries are not signed: on macOS run `xattr -d com.apple.quarantine walletflow` once.
 
-Флаги: `-addr 127.0.0.1:8080`, `-db путь/к/файлу.db`, `-no-browser`.
+## Use it with your wallets
 
-Настройки (ключи API, игнор сетей, лимиты): см. комментарии в [`.env.example`](.env.example).
+```bash
+git clone https://github.com/dionisvl/walletflow && cd walletflow
+cp .env.example .env      # add a free Etherscan key; TronGrid is optional
+go run ./cmd/walletflow   # opens http://127.0.0.1:8080
+```
 
-## Типы адресов
+1. **Wallets**: add your addresses with a name and a kind, or paste a list.
+2. **Sync**: downloads the history (several addresses at once, rate-limited, resumable).
+3. **Inbox**: review incoming and outgoing transfers with outside addresses.
+4. **Flows, Balances, Graph, Export**: look at the result.
 
-| Тип | История скачивается? | Что даёт |
+Settings live in [`.env.example`](.env.example). The database sits in your user config folder
+(`~/Library/Application Support/WalletFlow` on macOS); `-db` points elsewhere.
+
+## Screenshots
+
+| Inbox | Flows |
+|---|---|
+| <img src="docs/screenshots/inbox.webp" alt="Inbox"> | <img src="docs/screenshots/flows.webp" alt="Sankey of flows"> |
+| **Transactions** | **Balances** |
+| <img src="docs/screenshots/transactions.webp" alt="Transactions"> | <img src="docs/screenshots/balances.webp" alt="Balances over time"> |
+
+## Address kinds
+
+| Kind | History downloaded | What it does |
 |---|---|---|
-| **Мой** | да | твой учёт: Inbox, балансы, Sankey, экспорт. Мой ↔ мой = внутренний перевод |
-| **Биржа** | нет | переводы мой ↔ биржа распознаются сами (на биржу / с биржи) и не идут в Inbox |
-| **Чужой** | нет | просто имя контрагента. Переводы остаются в Inbox; авторазметка — через правило |
-| **Наблюдаемый** | да | чужой кошелёк для графа связей, в твой учёт не входит |
-| *нет в книге* | нет | как «чужой», только без имени |
+| **Mine** | yes | Your ledger: Inbox, balances, flows, export. Mine ↔ mine is an internal transfer. |
+| **Exchange** | no | Mine ↔ exchange is recognized as a deposit or withdrawal and skips the Inbox. |
+| **External** | no | Just a name for a counterparty. Its transfers stay in the Inbox; add a rule to auto-categorize. |
+| **Watched** | yes | Someone else's wallet, synced for the graph only and kept out of your ledger. |
+| *not in the book* | no | Like *external*, without a name. |
 
-- Адреса с одинаковым именем = одна сущность (все адреса Binance → один узел).
-- Смена типа пересчитывает всё сразу. Удаление адреса или снятие «мой»/«наблюдаемый» удаляет
-  его неразмеченную историю (вернуть можно повторным синком).
-- Адреса бирж и чужих не скачиваются никогда, поэтому огромные истории бирж (сотни тысяч переводов)
-  в базу не попадают. Если такой адрес по ошибке помечен «мой» или «наблюдаемый», первый синк сначала
-  оценит его активность по одной странице свежих переводов и не станет качать, если за год вышло бы
-  больше 10 000. Для старых тихих кошельков страховка: остановка на 10 000 (`MAX_TRANSFERS_PER_ADDRESS`).
+Addresses with the same name are one entity (all your Binance deposit addresses become one node).
+Exchange wallets have hundreds of thousands of transfers that a personal ledger does not need: before the
+first sync WalletFlow measures an address's activity and skips it if it looks like an exchange or a service.
 
-## Как пользоваться
+## Networks
 
-1. **Ключи**: в `.env` (см. `.env.example`) или в «Настройках».
-2. **Кошельки**: адрес, имя и тип в форме, или «Добавить списком» (`адрес, имя, тип` построчно).
-   «Выгрузить список» сохраняет книгу в том же формате, её можно загрузить обратно.
-3. **Синк** (кнопка слева внизу). Первый синк может быть долгим, его можно остановить и продолжить.
-4. **Inbox**: размечай клавишами `1`…`9`, `j`/`k` навигация, `x` отметить для массовой разметки,
-   `r` «всегда так для этого адреса» (создаёт правило), `c` комментарий.
-5. **Потоки**: Sankey за период по активу. **Балансы**: баланс во времени по кошелькам.
-6. **Граф**: связи между адресами из адресной книги.
-   - «Общие контрагенты»: адреса вне книги, связанные с 2+ кошельками. Так видно связь
-     двух кошельков через посредника, даже если они не переводили друг другу напрямую.
-   - Входящие от неизвестных / исходящие к неизвестным за последние N дней (топ, остальное свёрнуто).
-   - Клик по узлу или связи: детали и ссылка на транзакции. Раскладка запоминается, есть PNG.
+| Network | Source | Notes |
+|---|---|---|
+| Ethereum, Arbitrum, Polygon, Linea | [Etherscan API V2](https://docs.etherscan.io) | one free key for all |
+| Base, Optimism, BNB Chain | Etherscan API V2 | need a paid plan; hide them with `IGNORE_CHAINS` |
+| Tron (TRX, TRC20) | [TronGrid](https://developers.tron.network) | key optional |
 
-   **Как проверить связь 2–10 кошельков:** на «Кошельках» добавь их с типом «Наблюдаемый»
-   и нажми «Добавить и показать граф». Синк стартует сам (до 4 адресов параллельно),
-   граф дорисовывается по ходу загрузки.
-7. **Экспорт**: .xlsx или .csv.
+Bitcoin (xpub), Solana and USD prices are on the [roadmap](#roadmap).
 
-## Сети
+## Privacy and security
 
-EVM через Etherscan V2: Ethereum, Arbitrum, Base, Optimism, Polygon, BNB Chain, Linea
-(Base, Optimism и BNB Chain требуют платный тариф, их стоит добавить в `IGNORE_CHAINS`).
-Tron через TronGrid: TRX и TRC20.
+- Runs on `127.0.0.1` and rejects requests from other sites (Host and Origin checks).
+- Talks only to the block explorers above, with your public addresses. Nothing else leaves your machine.
+- Address poisoning warning: lookalikes of your addresses are flagged in the Inbox.
+- It never asks for seed phrases or private keys and has no way to move funds.
 
-## Разработка
+## How it works
 
-```bash
-go test ./...                                 # тесты, провайдеры на JSON фикстурах
-WF_LIVE=1 go test -run Live ./internal/chain/tron  # живой TronGrid
-```
+Go standard library HTTP server with htmx pages, ECharts and Cytoscape.js embedded into the binary, SQLite via
+[modernc.org/sqlite](https://gitlab.com/cznic/sqlite) (no CGO). Amounts are integers in minimal units, never floats.
 
 ```
-cmd/walletflow/        точка входа: конфиг, сервер, открытие браузера
-internal/config/       .env и переменные окружения
-internal/address/      форматы адресов (EVM, Tron base58check)
-internal/ledger/       доменная модель: адреса, активы, трансферы, классификатор
-internal/chain/        список сетей, лимитер, интерфейсы провайдеров
-internal/chain/evm/    Etherscan V2
-internal/chain/tron/   TronGrid
-internal/store/        SQLite, миграции, запросы
-internal/syncer/       фоновый синк
-internal/report/       данные для Sankey, балансов и графа
-internal/export/       .xlsx / .csv
-internal/web/          HTTP хендлеры, шаблоны и статика (embed)
+cmd/walletflow        entry point
+internal/chain/...    Etherscan and TronGrid clients
+internal/store        SQLite, migrations, queries
+internal/ledger       domain model and the classifier
+internal/syncer       background sync
+internal/report       data for the Sankey, balances and the graph
+internal/web          handlers, templates, static files
+internal/i18n         English and Russian UI
 ```
 
-Заметки для AI-агентов: `AGENTS.md`. План: `plans/10-04_plan.md`.
+## Roadmap
+
+- [ ] Historical USD prices and a dashboard
+- [ ] Bitcoin with xpub (change addresses count as your own)
+- [ ] Exchange CSV import matched by transaction hash
+- [ ] Solana
+- [ ] Swap decoding and a tax report (FIFO)
+
+Ideas and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+[MIT](LICENSE). Bundled libraries keep their own licenses: see [THIRD_PARTY.md](THIRD_PARTY.md).

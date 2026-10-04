@@ -23,6 +23,9 @@ import (
 	"github.com/dionisvl/walletflow/internal/web"
 )
 
+// version is set at release build time.
+var version = "dev"
+
 func main() {
 	if err := run(); err != nil {
 		log.Fatal(err)
@@ -43,7 +46,12 @@ func run() error {
 	flag.StringVar(&cfg.DBPath, "db", cfg.DBPath, "database file (WALLETFLOW_DB, default: data dir)")
 	noBrowser := flag.Bool("no-browser", false, "do not open the browser")
 	flag.BoolVar(&cfg.Demo, "demo", false, "start with made-up sample data in a temporary database")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
+	if *showVersion {
+		fmt.Println("walletflow", version)
+		return nil
+	}
 
 	if cfg.Demo {
 		cfg.DBPath = filepath.Join(os.TempDir(), "walletflow-demo.db")

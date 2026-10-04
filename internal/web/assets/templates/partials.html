@@ -44,9 +44,10 @@
     <div>
       {{if $t.Incoming}}{{t "from"}}{{else}}{{t "to"}}{{end}}
       <b title="{{$cp}}">{{$p.Label $cp}}</b> <code class="addr" data-copy="{{$cp}}" title="{{t "copy"}}">{{$cp}}</code>
-      {{with $p.Lookalike $cp}}<div class="warn">⚠ {{t "Looks like “%s” but is a different address. Possible address poisoning: never copy it from history." .}}</div>{{end}}
       · {{if $t.Incoming}}{{t "into"}}{{else}}{{t "out of"}}{{end}} <b>{{if $t.Incoming}}{{$p.Label $t.To}}{{else}}{{$p.Label $t.From}}{{end}}</b>
     </div>
+    {{with $p.Lookalike $cp}}<div class="warn">⚠ {{t "Looks like “%s” but is a different address. Possible address poisoning: never copy it from history." .}}</div>{{end}}
+
     <div class="cats">
       {{range $i, $c := $p.Categories}}
       <button class="cat" hx-post="/transfers/{{$t.ID}}/category?from=inbox&amp;category={{$c}}"

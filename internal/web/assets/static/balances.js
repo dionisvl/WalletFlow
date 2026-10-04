@@ -5,7 +5,7 @@
   const chart = echarts.init(el, matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : null);
   window.addEventListener('resize', () => chart.resize());
   const textColor = getComputedStyle(document.body).color;
-  const fmt = (v) => v.toLocaleString('ru-RU', { maximumFractionDigits: 4 });
+  const fmt = (v) => v.toLocaleString(document.documentElement.lang || 'en', { maximumFractionDigits: 4 });
 
   async function load() {
     const q = new URLSearchParams(new FormData(form));

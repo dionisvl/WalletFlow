@@ -21,7 +21,7 @@
     mine: t('Mine'), exchange: t('Exchange'), external: t('External'), watch: t('Watched'),
     unknown: t('Unknown address'), shared: t('Shared counterparty: linked to several wallets'), more: t('Folded addresses'),
   };
-  const fmt = (v) => Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 6 });
+  const fmt = (v) => Number(v).toLocaleString(document.documentElement.lang || 'en', { maximumFractionDigits: 6 });
   const day = (ts) => new Date(ts * 1000).toISOString().slice(0, 10);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -36,20 +36,20 @@
     maxZoom: 4,
     style: [
       { selector: 'node', style: {
-        label: 'data(label)', color: colors.text, 'font-size': 11, 'text-valign': 'bottom', 'text-margin-y': 5,
+        label: 'data(label)', color: colors.text, 'font-size': 13, 'text-valign': 'bottom', 'text-margin-y': 5,
         'text-wrap': 'ellipsis', 'text-max-width': 140, 'text-background-color': colors.panel,
         'text-background-opacity': 0.7, 'text-background-padding': 2, 'text-background-shape': 'roundrectangle',
         width: 'data(size)', height: 'data(size)', 'background-color': 'data(color)',
         'border-width': 2, 'border-color': colors.panel,
       } },
-      { selector: 'node[kind = "mine"]', style: { shape: 'ellipse', 'font-weight': 600, 'font-size': 12 } },
+      { selector: 'node[kind = "mine"]', style: { shape: 'ellipse', 'font-weight': 600, 'font-size': 15 } },
       { selector: 'node[kind = "exchange"]', style: { shape: 'round-rectangle' } },
       { selector: 'node[kind = "external"]', style: { shape: 'diamond' } },
-      { selector: 'node[kind = "watch"]', style: { shape: 'hexagon', 'font-weight': 600, 'font-size': 12 } },
+      { selector: 'node[kind = "watch"]', style: { shape: 'hexagon', 'font-weight': 600, 'font-size': 15 } },
       { selector: 'node[kind = "shared"]', style: { shape: 'ellipse', 'background-opacity': 0.85, 'font-size': 10 } },
       { selector: 'node[kind = "unknown"]', style: {
         shape: 'ellipse', 'background-opacity': 0.15, 'border-style': 'dashed', 'border-color': colors.external,
-        'font-size': 9, 'min-zoomed-font-size': 8, 'text-background-opacity': 0,
+        'font-size': 11, 'min-zoomed-font-size': 8, 'text-background-opacity': 0,
       } },
       { selector: 'node[kind = "more"]', style: { shape: 'round-octagon', 'background-opacity': 0.2, 'border-style': 'dotted', 'border-color': colors.external } },
       { selector: 'edge', style: {
@@ -82,13 +82,26 @@
       roots: cy.nodes().filter((n) => n.indegree(false) === 0) };
   }
 
+  // Labels keep the same on-screen size at any zoom: Cytoscape sizes text in graph units.
+  function scaleLabels() {
+    const z = cy.zoom();
+    cy.style()
+      .selector('node').style({ 'font-size': 13 / z, 'text-max-width': 160 / z, 'text-margin-y': 4 / z })
+      .selector('node[kind = "mine"], node[kind = "watch"]').style({ 'font-size': 15 / z })
+      .selector('node[kind = "unknown"]').style({ 'font-size': 11 / z })
+      .selector('edge.labeled[!unknown]').style({ 'font-size': 10 / z })
+      .update();
+  }
+  cy.on('zoom', scaleLabels);
+
   // fit shows everything but never zooms a small graph into giant nodes.
   function fit() {
     cy.fit(undefined, 40);
-    if (cy.zoom() > 1.2) {
-      cy.zoom(1.2);
+    if (cy.zoom() > 1.6) {
+      cy.zoom(1.6);
       cy.center();
     }
+    scaleLabels();
   }
 
   function relayout(clear) {
