@@ -8,8 +8,8 @@ import (
 
 	"github.com/xuri/excelize/v2"
 
-	"github.com/dionisvl/walletflow/internal/chain"
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/chain"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 // T translates UI text; nil means English.

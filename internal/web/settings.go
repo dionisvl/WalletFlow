@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/export"
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/export"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 // defaultChains are enabled until the user picks their own.

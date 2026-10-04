@@ -1,5 +1,8 @@
 version: 2
 
+# Lowercase names for the binary and archives, whatever the repository is called.
+project_name: walletflow
+
 builds:
   - main: ./cmd/walletflow
     binary: walletflow

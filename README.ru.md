@@ -34,17 +34,17 @@ WalletFlow посередине и хранит всё у тебя:
 Для демо ключи не нужны: вымышленные кошельки и 14 месяцев тестовых переводов.
 
 ```bash
-go run github.com/dionisvl/walletflow/cmd/walletflow@latest -demo
+go run github.com/dionisvl/WalletFlow/cmd/walletflow@latest -demo
 ```
 
-Или скачай бинарник для macOS, Linux или Windows в [Releases](https://github.com/dionisvl/walletflow/releases) и запусти `walletflow -demo`.
+Или скачай бинарник для macOS, Linux или Windows в [Releases](https://github.com/dionisvl/WalletFlow/releases) и запусти `walletflow -demo`.
 Бинарники не подписаны: на macOS один раз выполни `xattr -d com.apple.quarantine walletflow`.
 Язык интерфейса переключается внизу меню (English / Русский).
 
 ## Со своими кошельками
 
 ```bash
-git clone https://github.com/dionisvl/walletflow && cd walletflow
+git clone https://github.com/dionisvl/WalletFlow && cd WalletFlow
 cp .env.example .env      # бесплатный ключ Etherscan; TronGrid по желанию
 go run ./cmd/walletflow   # откроется http://127.0.0.1:8080
 ```

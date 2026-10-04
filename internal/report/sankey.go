@@ -5,8 +5,8 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/dionisvl/walletflow/internal/address"
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/address"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 // SankeyNode is a node of the flow chart.

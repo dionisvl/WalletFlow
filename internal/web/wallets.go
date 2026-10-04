@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/address"
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/address"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 type walletsData struct {

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dionisvl/walletflow/internal/ledger"
-	"github.com/dionisvl/walletflow/internal/store"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/store"
 )
 
 const inboxPageSize = 50

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/ledger"
-	"github.com/dionisvl/walletflow/internal/store"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/store"
 )
 
 const txPageSize = 100

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/address"
-	"github.com/dionisvl/walletflow/internal/ledger"
-	"github.com/dionisvl/walletflow/internal/store"
+	"github.com/dionisvl/WalletFlow/internal/address"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/store"
 )
 
 // Categories are the demo's categories; they match the transfers it reviews.

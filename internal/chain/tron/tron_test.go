@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/chain"
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/chain"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 const owner = "TQrY8tryqsYVCYS3MFbtffiPp2ccyn4STm"

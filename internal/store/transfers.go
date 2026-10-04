@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 // InsertTransfers stores new transfers, skips known ones and returns how many were added.

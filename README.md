@@ -11,9 +11,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/dionisvl/walletflow/actions/workflows/ci.yml"><img src="https://github.com/dionisvl/walletflow/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/dionisvl/walletflow" alt="Go version"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/dionisvl/walletflow" alt="License: MIT"></a>
+  <a href="https://github.com/dionisvl/WalletFlow/actions/workflows/ci.yml"><img src="https://github.com/dionisvl/WalletFlow/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/dionisvl/WalletFlow" alt="Go version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/dionisvl/WalletFlow" alt="License: MIT"></a>
   <a href="README.ru.md"><img src="https://img.shields.io/badge/README-на_русском-blue" alt="Русский"></a>
 </p>
 
@@ -39,16 +39,16 @@ WalletFlow sits in between and keeps everything on your machine:
 No API keys needed for the demo: it runs on made-up wallets and fourteen months of sample transfers.
 
 ```bash
-go run github.com/dionisvl/walletflow/cmd/walletflow@latest -demo
+go run github.com/dionisvl/WalletFlow/cmd/walletflow@latest -demo
 ```
 
-Or download a binary for macOS, Linux or Windows from [Releases](https://github.com/dionisvl/walletflow/releases) and run `walletflow -demo`.
+Or download a binary for macOS, Linux or Windows from [Releases](https://github.com/dionisvl/WalletFlow/releases) and run `walletflow -demo`.
 The binaries are not signed: on macOS run `xattr -d com.apple.quarantine walletflow` once.
 
 ## Use it with your wallets
 
 ```bash
-git clone https://github.com/dionisvl/walletflow && cd walletflow
+git clone https://github.com/dionisvl/WalletFlow && cd WalletFlow
 cp .env.example .env      # add a free Etherscan key; TronGrid is optional
 go run ./cmd/walletflow   # opens http://127.0.0.1:8080
 ```

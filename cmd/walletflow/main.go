@@ -17,10 +17,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/config"
-	"github.com/dionisvl/walletflow/internal/demo"
-	"github.com/dionisvl/walletflow/internal/store"
-	"github.com/dionisvl/walletflow/internal/web"
+	"github.com/dionisvl/WalletFlow/internal/config"
+	"github.com/dionisvl/WalletFlow/internal/demo"
+	"github.com/dionisvl/WalletFlow/internal/store"
+	"github.com/dionisvl/WalletFlow/internal/web"
 )
 
 // version is set at release build time.

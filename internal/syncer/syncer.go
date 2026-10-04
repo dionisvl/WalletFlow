@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/address"
-	"github.com/dionisvl/walletflow/internal/chain"
-	"github.com/dionisvl/walletflow/internal/chain/evm"
-	"github.com/dionisvl/walletflow/internal/chain/tron"
-	"github.com/dionisvl/walletflow/internal/ledger"
-	"github.com/dionisvl/walletflow/internal/store"
+	"github.com/dionisvl/WalletFlow/internal/address"
+	"github.com/dionisvl/WalletFlow/internal/chain"
+	"github.com/dionisvl/WalletFlow/internal/chain/evm"
+	"github.com/dionisvl/WalletFlow/internal/chain/tron"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/store"
 )
 
 // Status is what the UI shows about the current or last run.

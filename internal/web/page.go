@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/address"
-	"github.com/dionisvl/walletflow/internal/chain"
-	"github.com/dionisvl/walletflow/internal/i18n"
-	"github.com/dionisvl/walletflow/internal/ledger"
-	"github.com/dionisvl/walletflow/internal/syncer"
+	"github.com/dionisvl/WalletFlow/internal/address"
+	"github.com/dionisvl/WalletFlow/internal/chain"
+	"github.com/dionisvl/WalletFlow/internal/i18n"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/syncer"
 )
 
 // Page is the data every template gets; page specific data is in Data.

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 // BalanceSeries is the daily balance of one wallet.

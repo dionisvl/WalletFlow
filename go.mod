@@ -1,4 +1,4 @@
-module github.com/dionisvl/walletflow
+module github.com/dionisvl/WalletFlow
 
 go 1.27.0
 

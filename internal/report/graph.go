@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"slices"
 
-	"github.com/dionisvl/walletflow/internal/address"
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/address"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 // GraphNode is a wallet, an entity (addresses sharing a name) or an unknown counterparty.

@@ -14,11 +14,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dionisvl/walletflow/internal/chain"
-	"github.com/dionisvl/walletflow/internal/config"
-	"github.com/dionisvl/walletflow/internal/i18n"
-	"github.com/dionisvl/walletflow/internal/store"
-	"github.com/dionisvl/walletflow/internal/syncer"
+	"github.com/dionisvl/WalletFlow/internal/chain"
+	"github.com/dionisvl/WalletFlow/internal/config"
+	"github.com/dionisvl/WalletFlow/internal/i18n"
+	"github.com/dionisvl/WalletFlow/internal/store"
+	"github.com/dionisvl/WalletFlow/internal/syncer"
 )
 
 //go:embed assets

@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/dionisvl/walletflow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
 )
 
 // MemCursors keeps cursors in memory. For tests and dry runs.

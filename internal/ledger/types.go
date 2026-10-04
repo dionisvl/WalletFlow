@@ -3,7 +3,7 @@ package ledger
 import (
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/address"
+	"github.com/dionisvl/WalletFlow/internal/address"
 )
 
 // Address is an entry of the address book.

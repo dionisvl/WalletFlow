@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dionisvl/walletflow/internal/ledger"
-	"github.com/dionisvl/walletflow/internal/report"
-	"github.com/dionisvl/walletflow/internal/store"
+	"github.com/dionisvl/WalletFlow/internal/ledger"
+	"github.com/dionisvl/WalletFlow/internal/report"
+	"github.com/dionisvl/WalletFlow/internal/store"
 )
 
 type assetsData struct {
