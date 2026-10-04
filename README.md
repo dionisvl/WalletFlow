@@ -63,11 +63,21 @@ Settings live in [`.env.example`](.env.example). The database sits in your user 
 
 ## Screenshots
 
-| Inbox | Flows |
-|---|---|
-| <img src="docs/screenshots/inbox.webp" alt="Inbox"> | <img src="docs/screenshots/flows.webp" alt="Sankey of flows"> |
-| **Transactions** | **Balances** |
-| <img src="docs/screenshots/transactions.webp" alt="Transactions"> | <img src="docs/screenshots/balances.webp" alt="Balances over time"> |
+**Inbox**: review transfers with outside addresses from the keyboard.
+
+<img src="docs/screenshots/inbox.webp" alt="Inbox" width="900">
+
+**Flows**: where the money came from and where it went.
+
+<img src="docs/screenshots/flows.webp" alt="Sankey of flows" width="900">
+
+**Transactions**: the full journal with filters.
+
+<img src="docs/screenshots/transactions.webp" alt="Transactions" width="900">
+
+**Balances**: every wallet over time.
+
+<img src="docs/screenshots/balances.webp" alt="Balances over time" width="900">
 
 ## Address kinds
 

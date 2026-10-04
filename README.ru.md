@@ -13,7 +13,7 @@
 <p align="center"><a href="README.md">English</a></p>
 
 <p align="center">
-  <img src="docs/screenshots/graph.webp" alt="Граф связей" width="900">
+  <img src="docs/screenshots/graph-ru.webp" alt="Граф связей" width="900">
 </p>
 
 ## Зачем
@@ -56,6 +56,24 @@ go run ./cmd/walletflow   # откроется http://127.0.0.1:8080
 
 Настройки описаны в [`.env.example`](.env.example). База лежит в папке настроек пользователя
 (`~/Library/Application Support/WalletFlow` на macOS), флаг `-db` меняет путь.
+
+## Скриншоты
+
+**Inbox**: разметка переводов с чужими адресами с клавиатуры.
+
+<img src="docs/screenshots/inbox-ru.webp" alt="Inbox" width="900">
+
+**Потоки**: откуда пришли деньги и куда ушли.
+
+<img src="docs/screenshots/flows.webp" alt="Потоки" width="900">
+
+**Транзакции**: полный журнал с фильтрами.
+
+<img src="docs/screenshots/transactions.webp" alt="Транзакции" width="900">
+
+**Балансы**: каждый кошелёк во времени.
+
+<img src="docs/screenshots/balances.webp" alt="Балансы" width="900">
 
 ## Типы адресов
 
