@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -57,4 +58,16 @@ func Backoff(ctx context.Context, n int) error {
 	case <-time.After(time.Duration(n) * 2 * time.Second):
 		return nil
 	}
+}
+
+// PerDay estimates how many transfers a wallet makes per day from its newest
+// page of history (unix seconds). A page that is not full means the whole
+// history is that short, so the rate does not matter and it returns 0.
+func PerDay(ts []int64, full bool) float64 {
+	if !full || len(ts) < 2 {
+		return 0
+	}
+	lo, hi := slices.Min(ts), slices.Max(ts)
+	span := max(float64(hi-lo), 3600) / 86400 // at least an hour, in days
+	return float64(len(ts)) / span
 }

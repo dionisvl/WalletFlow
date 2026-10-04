@@ -92,7 +92,7 @@ func (c *Client) Pull(ctx context.Context, addr string, cur chain.Cursors, emit 
 func pullStream[T any](ctx context.Context, c *Client, addr, stream, path string, cur chain.Cursors, emit chain.Emit,
 	convert func([]T) ([]ledger.Transfer, int64), progress func(int)) (int, error) {
 	cursor := cur.Cursor(ctx, Key, addr, stream)
-	u := c.firstURL(addr, path, cursor)
+	u := c.firstURL(addr, path, cursor, "asc")
 	added := 0
 	for u != "" {
 		var p page[T]
@@ -120,15 +120,41 @@ func pullStream[T any](ctx context.Context, c *Client, addr, stream, path string
 	return added, nil
 }
 
-func (c *Client) firstURL(addr, path string, minTS int64) string {
+// PerDay estimates transfers per day of addr from its newest page of TRX and
+// TRC20 transfers, without downloading the history.
+func (c *Client) PerDay(ctx context.Context, addr string) (float64, error) {
+	var txs page[tx]
+	if err := c.getJSON(ctx, c.firstURL(addr, "/transactions", 0, "desc"), &txs); err != nil {
+		return 0, err
+	}
+	var toks page[trc20]
+	if err := c.getJSON(ctx, c.firstURL(addr, "/transactions/trc20", 0, "desc"), &toks); err != nil {
+		return 0, err
+	}
+	stamps := func(n int, at func(int) int64) []int64 {
+		out := make([]int64, n)
+		for i := range out {
+			out[i] = at(i) / 1000
+		}
+		return out
+	}
+	r1 := chain.PerDay(stamps(len(txs.Data), func(i int) int64 { return txs.Data[i].BlockTimestamp }), len(txs.Data) >= pageLimit)
+	r2 := chain.PerDay(stamps(len(toks.Data), func(i int) int64 { return toks.Data[i].BlockTimestamp }), len(toks.Data) >= pageLimit)
+	return max(r1, r2), nil
+}
+
+// pageLimit is the page size we ask TronGrid for.
+const pageLimit = 200
+
+func (c *Client) firstURL(addr, path string, minTS int64, order string) string {
 	base := c.BaseURL
 	if base == "" {
 		base = defaultURL
 	}
 	q := url.Values{
-		"limit":          {"200"},
+		"limit":          {strconv.Itoa(pageLimit)},
 		"only_confirmed": {"true"},
-		"order_by":       {"block_timestamp,asc"},
+		"order_by":       {"block_timestamp," + order},
 		"min_timestamp":  {strconv.FormatInt(minTS, 10)},
 	}
 	return base + "/v1/accounts/" + addr + path + "?" + q.Encode()

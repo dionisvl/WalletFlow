@@ -111,3 +111,52 @@ func TestStopsAtLimit(t *testing.T) {
 		t.Errorf("errors = %q", errs)
 	}
 }
+
+// A wallet whose newest 200 transfers fit into an hour is skipped before any download.
+func TestSkipsBusyAddress(t *testing.T) {
+	ctx := context.Background()
+	st, err := store.Open(filepath.Join(t.TempDir(), "t.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	st.UpsertAddress(ctx, ledger.Address{Family: "tron", Address: big, Kind: ledger.KindWatch})
+
+	var ascRequests atomic.Int64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Query().Get("order_by"), "asc") {
+			ascRequests.Add(1)
+		}
+		var b strings.Builder
+		b.WriteString(`{"success":true,"data":[`)
+		for i := range 200 {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			fmt.Fprintf(&b, `{"txID":"t%d","transaction_id":"t%d","block_timestamp":%d,"value":"1","raw_data":{"contract":[]}}`, i, i, 1_700_000_000_000+int64(i)*1000)
+		}
+		b.WriteString(`]}`)
+		fmt.Fprint(w, b.String())
+	}))
+	defer srv.Close()
+
+	tronChain, _ := chain.ByKey("tron")
+	s := New(st, []chain.Chain{tronChain},
+		func(context.Context) (string, string) { return "", "key" },
+		func(context.Context) map[string]bool { return map[string]bool{"tron": true} })
+	s.tronURL = srv.URL
+	s.Start(ctx)
+	for deadline := time.Now().Add(5 * time.Second); s.Status().Running; time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			s.Stop()
+			t.Fatal("sync did not finish")
+		}
+	}
+	errs := s.Status().Errors
+	if len(errs) != 1 || !strings.Contains(errs[0], "не загружаю") {
+		t.Errorf("errors = %q", errs)
+	}
+	if n := ascRequests.Load(); n != 0 {
+		t.Errorf("history download requests = %d, want 0", n)
+	}
+}

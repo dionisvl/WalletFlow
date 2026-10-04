@@ -64,3 +64,15 @@ func TestLive(t *testing.T) {
 		t.Fatal("nothing synced")
 	}
 }
+
+// TestLivePerDay prints activity of real addresses. Run with WF_LIVE=1.
+func TestLivePerDay(t *testing.T) {
+	if os.Getenv("WF_LIVE") == "" {
+		t.Skip("set WF_LIVE=1")
+	}
+	c := &Client{Key: os.Getenv("TRONGRID_API_KEY"), HTTP: &http.Client{Timeout: 30 * time.Second}, Limit: chain.NewLimiter(300 * time.Millisecond)}
+	for _, a := range strings.Fields(os.Getenv("WF_ADDRS")) {
+		r, err := c.PerDay(context.Background(), a)
+		t.Logf("%s: %.1f/day (%.0f/year) err=%v", a, r, r*365, err)
+	}
+}

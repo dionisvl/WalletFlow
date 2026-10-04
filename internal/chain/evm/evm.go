@@ -69,7 +69,7 @@ func (c *Client) Pull(ctx context.Context, ch chain.Chain, addr string, cur chai
 	for _, s := range streams {
 		start := cur.Cursor(ctx, ch.Key, addr, s.name)
 		for {
-			rows, err := c.fetch(ctx, ch.ChainID, s.action, addr, start)
+			rows, err := c.fetch(ctx, ch.ChainID, s.action, addr, start, "asc")
 			if err != nil {
 				return added, err
 			}
@@ -95,7 +95,25 @@ func (c *Client) Pull(ctx context.Context, ch chain.Chain, addr string, cur chai
 	return added, nil
 }
 
-func (c *Client) fetch(ctx context.Context, chainID int, action, addr string, startBlock int64) ([]row, error) {
+// PerDay estimates transfers per day of addr on ch from its newest page of
+// native and token transfers, without downloading the history.
+func (c *Client) PerDay(ctx context.Context, ch chain.Chain, addr string) (float64, error) {
+	var rate float64
+	for _, action := range []string{"txlist", "tokentx"} {
+		rows, err := c.fetch(ctx, ch.ChainID, action, addr, 0, "desc")
+		if err != nil {
+			return 0, err
+		}
+		ts := make([]int64, len(rows))
+		for i, r := range rows {
+			ts[i], _ = strconv.ParseInt(r.TimeStamp, 10, 64)
+		}
+		rate = max(rate, chain.PerDay(ts, len(rows) >= pageSize))
+	}
+	return rate, nil
+}
+
+func (c *Client) fetch(ctx context.Context, chainID int, action, addr string, startBlock int64, sort string) ([]row, error) {
 	q := url.Values{
 		"chainid":    {strconv.Itoa(chainID)},
 		"module":     {"account"},
@@ -105,7 +123,7 @@ func (c *Client) fetch(ctx context.Context, chainID int, action, addr string, st
 		"endblock":   {"9999999999"},
 		"page":       {"1"},
 		"offset":     {strconv.Itoa(pageSize)},
-		"sort":       {"asc"},
+		"sort":       {sort},
 		"apikey":     {c.Key},
 	}
 	base := c.BaseURL

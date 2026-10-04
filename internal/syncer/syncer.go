@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -236,6 +237,30 @@ func (s *Syncer) runJob(ctx context.Context, j job, ec *evm.Client, tc *tron.Cli
 		s.failTooBig(key, have)
 		return
 	}
+	// First sync of this address on this chain: measure activity before downloading,
+	// so an exchange or a service is skipped up front instead of at the limit.
+	if s.MaxPerAddress > 0 {
+		onChain, err := s.store.CountTransfers(ctx, store.Filter{Addresses: []string{j.addr}, Chain: j.chain.Key})
+		if err != nil {
+			s.fail(fmt.Errorf("%s: %w", key, err))
+			return
+		}
+		if onChain == 0 {
+			progress(key + ": оценка активности")
+			var perDay float64
+			switch j.chain.Family {
+			case address.EVM:
+				perDay, err = ec.PerDay(ctx, j.chain, j.addr)
+			case address.Tron:
+				perDay, err = tc.PerDay(ctx, j.addr)
+			}
+			if err == nil && perDay*365 > float64(s.MaxPerAddress) {
+				s.failBusy(key, perDay)
+				return
+			}
+			// A failed probe is not fatal: the sync below reports real API errors.
+		}
+	}
 	// Checked before each page: deleting an address mid-sync stops its download,
 	// and an address that grows past the limit stops too.
 	emit := func(ctx context.Context, ts []ledger.Transfer) (int, error) {
@@ -278,6 +303,19 @@ func (s *Syncer) failTooBig(key string, n int) {
 	s.fail(fmt.Errorf("%s: синк остановлен на %d трансферах, похоже на биржу или сервис. "+
 		"Если это биржа, смени тип на «Биржа»: её история не нужна, лишнее удалится. "+
 		"Лимит: MAX_TRANSFERS_PER_ADDRESS в .env (0 = без лимита)", key, n))
+}
+
+func (s *Syncer) failBusy(key string, perDay float64) {
+	s.fail(fmt.Errorf("%s: не загружаю, ≈%s переводов в день, похоже на биржу или сервис "+
+		"(за год вышло бы больше лимита %d). Если это биржа, смени тип на «Биржа». "+
+		"Лимит: MAX_TRANSFERS_PER_ADDRESS в .env (0 = без лимита)", key, roundRate(perDay), s.MaxPerAddress))
+}
+
+func roundRate(v float64) string {
+	if v >= 10 {
+		return strconv.Itoa(int(v + 0.5))
+	}
+	return strconv.FormatFloat(v, 'f', 1, 64)
 }
 
 // block marks a chain unavailable on the API plan; it reports whether it was newly blocked.

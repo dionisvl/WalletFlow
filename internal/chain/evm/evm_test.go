@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"walletflow/internal/chain"
 	"walletflow/internal/ledger"
@@ -85,5 +87,18 @@ func TestPullFixtures(t *testing.T) {
 		if tr.Amount() != w.amount || tr.Asset.Symbol != w.symbol || tr.FeeRaw != w.fee {
 			t.Errorf("%s = %s %s fee %s, want %+v", tr.TxHash, tr.Amount(), tr.Asset.Symbol, tr.FeeRaw, w)
 		}
+	}
+}
+
+// TestLivePerDay prints activity of real addresses on Ethereum. Run with WF_LIVE=1.
+func TestLivePerDay(t *testing.T) {
+	if os.Getenv("WF_LIVE") == "" {
+		t.Skip("set WF_LIVE=1")
+	}
+	c := &Client{Key: os.Getenv("ETHERSCAN_API_KEY"), HTTP: http.DefaultClient, Limit: chain.NewLimiter(400 * time.Millisecond)}
+	eth, _ := chain.ByKey("ethereum")
+	for _, a := range strings.Fields(os.Getenv("WF_ADDRS")) {
+		r, err := c.PerDay(context.Background(), eth, a)
+		t.Logf("%s: %.1f/day (%.0f/year) err=%v", a, r, r*365, err)
 	}
 }
