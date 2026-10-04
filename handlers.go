@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -186,7 +187,33 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("POST /sync", a.syncStart)
 	mux.HandleFunc("GET /sync/status", a.syncStatus)
 	mux.HandleFunc("POST /sync/stop", a.syncStop)
-	return logErrors(mux)
+	return localOnly(logErrors(mux))
+}
+
+// localOnly blocks DNS rebinding (foreign Host) and cross-site form posts (foreign Origin).
+func localOnly(h http.Handler) http.Handler {
+	isLocal := func(host string) bool {
+		if hst, _, err := net.SplitHostPort(host); err == nil {
+			host = hst
+		}
+		return host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]"
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isLocal(r.Host) {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			if o := r.Header.Get("Origin"); o != "" {
+				u, err := url.Parse(o)
+				if err != nil || !isLocal(u.Host) {
+					http.Error(w, "forbidden origin", http.StatusForbidden)
+					return
+				}
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
 }
 
 func logErrors(h http.Handler) http.Handler {
@@ -451,9 +478,11 @@ func (a *App) setCategory(w http.ResponseWriter, r *http.Request) {
 			serverError(w, err)
 			return
 		}
-		if err := a.store.AddRule(ctx, Rule{Counterparty: t.Counterparty(), Class: t.Class, Category: cat}); err != nil {
-			serverError(w, err)
-			return
+		if t.Class == ClassInflow || t.Class == ClassOutflow {
+			if err := a.store.AddRule(ctx, Rule{Counterparty: t.Counterparty(), Class: t.Class, Category: cat}); err != nil {
+				serverError(w, err)
+				return
+			}
 		}
 		if r.FormValue("from") == "inbox" {
 			a.refreshInbox(w, r)
