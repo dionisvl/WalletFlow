@@ -1,0 +1,14 @@
+{{define "content"}}{{$p := .}}
+<form class="card" method="get" action="/export/file">
+  <div class="row">
+    <label>с <input type="date" name="from"></label>
+    <label>по <input type="date" name="to"></label>
+    <label><input type="checkbox" name="spam" value="1"> включить спам-токены</label>
+  </div>
+  <div class="row">
+    <button class="primary" name="format" value="xlsx">Скачать Excel (.xlsx)</button>
+    <button name="format" value="csv">Скачать CSV</button>
+  </div>
+  <p class="muted">Полный журнал: дата, сеть, класс, категория, адреса с именами, суммы, комиссии, хэши, комментарии. Второй лист: адресная книга.</p>
+</form>
+{{end}}

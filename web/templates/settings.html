@@ -1,0 +1,46 @@
+{{define "content"}}
+{{with .Data}}
+{{if .Saved}}<p class="ok">Сохранено.</p>{{end}}
+<form class="card" method="post" action="/settings">
+  <h2>API ключи</h2>
+  <label>Etherscan API V2 (один ключ на все EVM сети) · <a href="https://etherscan.io/myapikey" target="_blank" rel="noopener">получить</a></label>
+  <input name="etherscan_key" value="{{.EtherscanKey}}" autocomplete="off" spellcheck="false">
+  <label>TronGrid (необязательно, без ключа медленнее) · <a href="https://www.trongrid.io/dashboard" target="_blank" rel="noopener">получить</a></label>
+  <input name="trongrid_key" value="{{.TronGridKey}}" autocomplete="off" spellcheck="false">
+
+  <h2>Сети</h2>
+  <div class="chains">{{$en := .Chains}}{{range chains}}
+    <label><input type="checkbox" name="chain" value="{{.Key}}" {{if index $en .Key}}checked{{end}}> {{.Name}}</label>{{end}}
+  </div>
+  <p class="muted">Бесплатный тариф Etherscan покрывает не все сети. Если сеть недоступна, синк покажет ошибку и пропустит её.</p>
+
+  <h2>Категории</h2>
+  <label>По одной на строке. Первые 9 доступны клавишами 1…9 в Inbox.</label>
+  <textarea name="categories" rows="9">{{.Categories}}</textarea>
+
+  <div class="row"><button class="primary">Сохранить</button></div>
+</form>
+
+<div class="card">
+  <h2>Правила</h2>
+  {{if .Rules}}
+  <table class="table">
+    <thead><tr><th>Контрагент</th><th>Направление</th><th>Категория</th><th></th></tr></thead>
+    <tbody>{{range .Rules}}
+      <tr><td><code>{{$.Label .Counterparty}}</code> <span class="muted">{{short .Counterparty}}</span></td><td>{{classLabel .Class}}</td><td>{{.Category}}</td>
+      <td><button class="link danger" hx-post="/rules/{{.ID}}/delete" hx-target="closest tr" hx-swap="outerHTML">удалить</button></td></tr>
+    {{end}}</tbody>
+  </table>
+  <p class="muted">Удаление правила не меняет уже размеченные транзакции.</p>
+  {{else}}
+  <p class="muted">Правил пока нет. Их создаёт галочка «всегда так для этого адреса» в Inbox.</p>
+  {{end}}
+</div>
+
+<div class="card">
+  <h2>База</h2>
+  <p>Файл: <code>{{.DBPath}}</code></p>
+  <a class="button" href="/backup">Скачать копию базы</a>
+</div>
+{{end}}
+{{end}}

@@ -1,0 +1,7 @@
+{{define "content"}}
+{{if not .Book}}
+<div class="empty">Сначала добавь свои адреса на странице <a href="/wallets">Кошельки</a>, затем нажми «Синк».</div>
+{{else}}
+{{template "inbox-list" .}}
+{{end}}
+{{end}}
